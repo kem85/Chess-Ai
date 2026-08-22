@@ -1,0 +1,13 @@
+[Event "Model Duel"]
+[Site "Local"]
+[Date "2026.03.20"]
+[Round "1"]
+[White "Model_A"]
+[Black "Model_B"]
+[Result "1-0"]
+[Termination "CHECKMATE"]
+[Model_A_Color "White"]
+[SearchType "MCTS"]
+[Simulations "400"]
+[CPUCT "2"]
+

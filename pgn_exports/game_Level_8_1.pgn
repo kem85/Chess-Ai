@@ -1,0 +1,9 @@
+[Event "ResNet Gauntlet vs Level 8"]
+[Site "Local Machine"]
+[Date "2026.03.20"]
+[Round "?"]
+[White "Stockfish Level 8"]
+[Black "ResNet"]
+[Result "1-0"]
+
+1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 6. g4 h6 7. Rg1 Nc6 8. Be3 Bd7 9. Be2 a6 10. h4 d5 11. exd5 Nxd5 12. Nxd5 exd5 13. Nxc6 Bxc6 14. Qd4 Qe7 15. O-O-O Qe4 16. Qc3 O-O-O 17. Bd3 Qb4 18. Qe5 Qd6 19. Bf5+ Bd7 20. Bxd7+ Qxd7 21. Rd3 Bd6 22. Qxg7 Bc7 23. Qd4 Rhe8 24. Rc3 Re4 25. Qa7 Rc4 26. Qa8+ Bb8 27. Bf4 Qc6 28. Qxb8+ Kd7 29. Rxc4 Qxc4 30. Qxb7+ Ke8 31. Re1+ Kf8 32. Qe7+ Kg8 33. Qxd8+ Kh7 34. Qf6 Qxf4+ 35. Qxf4 Kg7 36. Re7 d4 37. Qxf7+ Kh8 38. Re8# 1-0

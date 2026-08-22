@@ -1,0 +1,50 @@
+# Model Weights (Allow models/ for Git LFS)
+*.pt
+*.bin
+*.safetensors
+Models/
+Onnx Shit/
+
+# Allow pre-trained checkpoints tracked via Git LFS
+!models/
+!models/*.pth
+!models/*.onnx
+
+# Datasets & Training Shards
+*.npz
+/shards_curriculum
+shards/
+datasets/
+*.zip
+data/
+
+# Engines & Binaries
+stockfish/
+*.exe
+
+# Python / Jupyter Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE & Editor files
+.vscode/
+.idea/
+.history/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+[Event "Model Duel"]
+[Site "Local"]
+[Date "2026.03.20"]
+[Round "1"]
+[White "Model_A"]
+[Black "Model_B"]
+[Result "0-1"]
+[FEN "r2q2k1/ppp2rp1/3b1n1p/8/3Q4/2N4P/PP3PP1/R1B1R1K1 b - - 0 15"]
+[SetUp "1"]
+[Termination "CHECKMATE"]
+[Model_A_Color "White"]
+[SearchType "MCTS"]
+[Simulations "400"]
+[CPUCT "2.0"]
+[TreeReuse "True"]
+
+15... Bh2+ 16. Kxh2 Qxd4 17. Be3 Qe5+ 18. g3 Qf5 19. Rad1 Re8 20. Bxa7 Rxe1 21.
+Rxe1 b6 22. Kg2 Nd5 23. Re8+ Kh7 24. Nxd5 Qxd5+ 25. f3 Qxf3+ 26. Kh2 Qf2+ 27.
+Kh1 Qf1+ 28. Kh2 Rf2# 0-1
+
