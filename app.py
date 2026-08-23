@@ -375,7 +375,7 @@ if is_st_active:
         js_content = f.read()
 
     target_fetch = 'fetch("/'
-    replacement_fetch = f'fetch("http://localhost:{port}/'
+    replacement_fetch = f'fetch("http://127.0.0.1:{port}/'
     js_content_updated = js_content.replace(target_fetch, replacement_fetch)
 
     full_html = html_content.replace(
@@ -386,13 +386,7 @@ if is_st_active:
         f'<script>{js_content_updated}</script>'
     )
 
-
-    if hasattr(st, "iframe"):
-        st.iframe(f"http://localhost:{port}", height=760)
-    else:
-        st.components.v1.iframe(f"http://localhost:{port}", height=760)
-
-
+    st.components.v1.html(full_html, height=850, scrolling=True)
 
 
 elif __name__ == "__main__":
@@ -401,7 +395,7 @@ elif __name__ == "__main__":
     port = find_available_port(8000)
     server_address = ("", port)
     httpd = HTTPServer(server_address, ChessAPIHandler)
-    url = f"http://localhost:{port}"
+    url = f"http://127.0.0.1:{port}"
 
     print(f"\n==============================================================")
     print(f"⚡ Chess-AI Web Arena running on: {url}")
