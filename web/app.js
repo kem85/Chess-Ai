@@ -19,7 +19,7 @@ const PIECE_SVGS = {
   b: `<svg viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g fill="#1e293b" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.354.49-2.323.47-3-.5 1.354-1.94 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path d="M17.5 26h10M15 30h15M22.5 15.5v5M20 18h5" stroke="#ffffff"/></g></svg>`,
   r: `<svg viewBox="0 0 45 45"><g fill="#1e293b" fill-rule="evenodd" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9v3zM12 36v-4h21v4H12zM11 14V9h4v2h5V9h5v2h5V9h4v5" stroke-linecap="butt"/><path d="M34 14l-3 3H14l-3-3"/><path d="M31 17v12.5H14V17"/><path d="M31 29.5l1.5 2.5h-20l1.5-2.5"/><path d="M11 14h23"/></g></svg>`,
   q: `<svg viewBox="0 0 45 45"><g fill="#1e293b" fill-rule="evenodd" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM24.5 7.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM11 20a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM38 20a2 2 0 1 1-4 0 2 2 0 1 1 4 0z"/><path d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-13.5V25l-7-11 2 12z"/><path d="M9 26c0 2 1.5 2 2.5 4 2.5 2 5 2.5 11 2.5s8.5-.5 11-2.5c1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path d="M11 30c3.5 2.5 6 2.5 11.5 2.5s8-.5 11.5-2.5M11.5 34c2.5 1.5 5.5 1.5 11 1.5s8.5 0 11-1.5M12 38c2.5 1 5.5 1 10.5 1s8 0 10.5-1"/></g></svg>`,
-  k: `<svg viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6M20 8h5" stroke="#ffffff"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#1e293b" stroke="#ffffff"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-1-1 8-6 8-3-4-7.5-3-10.5-3s-7.5-1-10.5 3c-5 0-2-9-6-8-3 6 6 10.5 6 10.5v7z" fill="#1e293b"/><path d="M20 28h5M18 32h9M16 36h13" stroke="#ffffff"/></g></svg>`
+  k: `<svg viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6M20 8h5" stroke="#ffffff"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#1e293b" stroke="#ffffff"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-1-1 8-6 8-3-4-7.5-3-10.5-3s-7.5-1-10.5 3c-5 0-2-9-6-8-3 6 6 10.5 6 10.5v7z" fill="#1e293b"/><path d="M20 28h5M18 32h9M16 36h13" stroke="#ffffff"/></g></svg>`,
 };
 
 // Sound Effects Synthesizer using Web Audio API (Soft & Subtle)
@@ -53,9 +53,15 @@ class ChessSoundFx {
       const gain = this.ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(
+        120,
+        this.ctx.currentTime + 0.05,
+      );
       gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        this.ctx.currentTime + 0.05,
+      );
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start();
@@ -71,9 +77,15 @@ class ChessSoundFx {
       const gain = this.ctx.createGain();
       osc.type = "triangle";
       osc.frequency.setValueAtTime(380, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(90, this.ctx.currentTime + 0.07);
+      osc.frequency.exponentialRampToValueAtTime(
+        90,
+        this.ctx.currentTime + 0.07,
+      );
       gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.07);
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        this.ctx.currentTime + 0.07,
+      );
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start();
@@ -89,7 +101,10 @@ class ChessSoundFx {
       const gain = this.ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(520, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(350, this.ctx.currentTime + 0.1);
+      osc.frequency.exponentialRampToValueAtTime(
+        350,
+        this.ctx.currentTime + 0.1,
+      );
       gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
       osc.connect(gain);
@@ -102,6 +117,65 @@ class ChessSoundFx {
 
 const soundFx = new ChessSoundFx();
 
+const JS_PIECE_VALS = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+function evalGameJS(game) {
+  let score = 0;
+  const board = game.board();
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (p) {
+        const val = JS_PIECE_VALS[p.type] || 0;
+        score += p.color === "w" ? val : -val;
+      }
+    }
+  }
+  return score;
+}
+
+function minimaxJS(game, depth, alpha, beta, isMax) {
+  if (depth === 0 || game.game_over()) {
+    return { score: evalGameJS(game), move: null };
+  }
+  const moves = game.moves({ verbose: true });
+  if (moves.length === 0) {
+    return { score: evalGameJS(game), move: null };
+  }
+
+  let bestMove = moves[Math.floor(Math.random() * moves.length)];
+
+  if (isMax) {
+    let maxEval = -Infinity;
+    for (let m of moves) {
+      game.move(m);
+      const ev = minimaxJS(game, depth - 1, alpha, beta, false).score;
+      game.undo();
+      if (ev > maxEval) {
+        maxEval = ev;
+        bestMove = m;
+      }
+      alpha = Math.max(alpha, ev);
+      if (beta <= alpha) break;
+    }
+    return { score: maxEval, move: bestMove };
+  } else {
+    let minEval = Infinity;
+    for (let m of moves) {
+      game.move(m);
+      const ev = minimaxJS(game, depth - 1, alpha, beta, true).score;
+      game.undo();
+      if (ev < minEval) {
+        minEval = ev;
+        bestMove = m;
+      }
+      beta = Math.min(beta, ev);
+      if (beta <= alpha) break;
+    }
+    return { score: minEval, move: bestMove };
+  }
+}
+
 // Game State Management
 class ChessApp {
   constructor() {
@@ -111,7 +185,8 @@ class ChessApp {
     this.evalTop = document.getElementById("evalScoreTop");
     this.evalBottom = document.getElementById("evalScoreBottom");
 
-    this.currentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    this.currentFen =
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     this.isFlipped = false;
     this.playerColor = "w"; // 'w' = White, 'b' = Black, 'self' = Self-play
     this.selectedSquare = null;
@@ -124,7 +199,7 @@ class ChessApp {
 
     this.initUI();
     this.fetchSystemStatus();
-    this.renderBoard();
+    this.setPlayerMode("w");
   }
 
   initUI() {
@@ -144,9 +219,15 @@ class ChessApp {
     });
 
     // Player mode buttons
-    document.getElementById("btnPlayWhite").addEventListener("click", () => this.setPlayerMode("w"));
-    document.getElementById("btnPlayBlack").addEventListener("click", () => this.setPlayerMode("b"));
-    document.getElementById("btnSelfPlay").addEventListener("click", () => this.setPlayerMode("self"));
+    document
+      .getElementById("btnPlayWhite")
+      .addEventListener("click", () => this.setPlayerMode("w"));
+    document
+      .getElementById("btnPlayBlack")
+      .addEventListener("click", () => this.setPlayerMode("b"));
+    document
+      .getElementById("btnSelfPlay")
+      .addEventListener("click", () => this.setPlayerMode("self"));
 
     // Sound toggle
     const soundBtn = document.getElementById("btnSoundToggle");
@@ -155,13 +236,19 @@ class ChessApp {
     }
 
     // Actions
-    document.getElementById("btnNewGame").addEventListener("click", () => this.resetGame());
-    document.getElementById("btnUndo").addEventListener("click", () => this.undoMove());
+    document
+      .getElementById("btnNewGame")
+      .addEventListener("click", () => this.resetGame());
+    document
+      .getElementById("btnUndo")
+      .addEventListener("click", () => this.undoMove());
     document.getElementById("btnFlip").addEventListener("click", () => {
       this.isFlipped = !this.isFlipped;
       this.renderBoard();
     });
-    document.getElementById("btnExportPGN").addEventListener("click", () => this.exportPGN());
+    document
+      .getElementById("btnExportPGN")
+      .addEventListener("click", () => this.exportPGN());
   }
 
   async fetchSystemStatus() {
@@ -169,7 +256,8 @@ class ChessApp {
       const res = await fetch("/api/status");
       const data = await res.json();
       if (data.device) {
-        document.getElementById("deviceBadge").textContent = `${data.device.toUpperCase()}: Active`;
+        document.getElementById("deviceBadge").textContent =
+          `${data.device.toUpperCase()}: Active`;
       }
       if (data.model) {
         document.getElementById("modelBadge").textContent = data.model;
@@ -182,17 +270,25 @@ class ChessApp {
 
   setPlayerMode(color) {
     this.playerColor = color;
-    document.getElementById("btnPlayWhite").classList.toggle("active", color === "w");
-    document.getElementById("btnPlayBlack").classList.toggle("active", color === "b");
-    document.getElementById("btnSelfPlay").classList.toggle("active", color === "self");
+    document
+      .getElementById("btnPlayWhite")
+      .classList.toggle("active", color === "w");
+    document
+      .getElementById("btnPlayBlack")
+      .classList.toggle("active", color === "b");
+    document
+      .getElementById("btnSelfPlay")
+      .classList.toggle("active", color === "self");
 
     if (color === "b") {
       this.isFlipped = true;
-      document.getElementById("topPlayerName").textContent = "AI Engine (White)";
+      document.getElementById("topPlayerName").textContent =
+        "AI Engine (White)";
       document.getElementById("bottomPlayerName").textContent = "You (Black)";
     } else if (color === "w") {
       this.isFlipped = false;
-      document.getElementById("topPlayerName").textContent = "AI Engine (Black)";
+      document.getElementById("topPlayerName").textContent =
+        "AI Engine (Black)";
       document.getElementById("bottomPlayerName").textContent = "You (White)";
     } else {
       document.getElementById("topPlayerName").textContent = "AI Engine 1";
@@ -203,7 +299,8 @@ class ChessApp {
   }
 
   resetGame() {
-    this.currentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    this.currentFen =
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     this.moveHistory = [];
     this.selectedSquare = null;
     this.legalMoves = [];
@@ -215,7 +312,10 @@ class ChessApp {
 
     // If human is Black or self-play, trigger AI's first move
     const turn = this.getTurn();
-    if ((this.playerColor === "b" && turn === "w") || this.playerColor === "self") {
+    if (
+      (this.playerColor === "b" && turn === "w") ||
+      this.playerColor === "self"
+    ) {
       this.triggerAiMove();
     }
   }
@@ -226,18 +326,31 @@ class ChessApp {
 
   renderBoard() {
     this.boardEl.innerHTML = "";
-    const ranks = this.isFlipped ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
-    const files = this.isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
+    const ranks = this.isFlipped
+      ? [0, 1, 2, 3, 4, 5, 6, 7]
+      : [7, 6, 5, 4, 3, 2, 1, 0];
+    const files = this.isFlipped
+      ? [7, 6, 5, 4, 3, 2, 1, 0]
+      : [0, 1, 2, 3, 4, 5, 6, 7];
 
     const boardMatrix = this.fenToMatrix(this.currentFen);
     const turn = this.getTurn();
 
     // Turn badge update
-    const isHumanTurn = (this.playerColor === turn && this.playerColor !== "self");
-    document.getElementById("bottomPlayerStatus").classList.toggle("active-turn", isHumanTurn);
-    document.getElementById("topPlayerStatus").classList.toggle("active-turn", !isHumanTurn);
-    document.getElementById("bottomPlayerStatus").textContent = isHumanTurn ? "Your Turn" : "Waiting";
-    document.getElementById("topPlayerStatus").textContent = !isHumanTurn ? "Thinking" : "Waiting";
+    const isHumanTurn =
+      this.playerColor === turn && this.playerColor !== "self";
+    document
+      .getElementById("bottomPlayerStatus")
+      .classList.toggle("active-turn", isHumanTurn);
+    document
+      .getElementById("topPlayerStatus")
+      .classList.toggle("active-turn", !isHumanTurn);
+    document.getElementById("bottomPlayerStatus").textContent = isHumanTurn
+      ? "Your Turn"
+      : "Waiting";
+    document.getElementById("topPlayerStatus").textContent = !isHumanTurn
+      ? "Thinking"
+      : "Waiting";
 
     for (let r of ranks) {
       for (let f of files) {
@@ -266,7 +379,10 @@ class ChessApp {
         }
 
         // Highlight last move
-        if (this.lastMove && (this.lastMove.from === sqName || this.lastMove.to === sqName)) {
+        if (
+          this.lastMove &&
+          (this.lastMove.from === sqName || this.lastMove.to === sqName)
+        ) {
           sqEl.classList.add("highlight-last");
         }
 
@@ -315,7 +431,8 @@ class ChessApp {
     if (this.isThinking) return;
 
     const turn = this.getTurn();
-    const isHumanTurn = (this.playerColor === turn && this.playerColor !== "self");
+    const isHumanTurn =
+      this.playerColor === turn && this.playerColor !== "self";
     if (!isHumanTurn) return;
 
     // If square clicked is a legal destination move
@@ -347,7 +464,9 @@ class ChessApp {
   }
 
   isPieceColor(piece, color) {
-    return color === "w" ? piece === piece.toUpperCase() : piece === piece.toLowerCase();
+    return color === "w"
+      ? piece === piece.toUpperCase()
+      : piece === piece.toLowerCase();
   }
 
   computeLegalMoves(sq) {
@@ -359,7 +478,7 @@ class ChessApp {
           to: m.to,
           uci: `${m.from}${m.to}${m.promotion || ""}`,
           isCapture: m.flags.includes("c") || m.flags.includes("e"),
-          isPromotion: m.flags.includes("p")
+          isPromotion: m.flags.includes("p"),
         }));
         return;
       } catch (err) {
@@ -374,7 +493,7 @@ class ChessApp {
       const res = await fetch("/api/legal_moves", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fen: this.currentFen, square: sq })
+        body: JSON.stringify({ fen: this.currentFen, square: sq }),
       });
       const data = await res.json();
       this.legalMoves = data.moves || [];
@@ -421,7 +540,7 @@ class ChessApp {
           this.moveHistory.push({
             san: moveObj.san,
             uci: moveUci,
-            isCapture: !!moveObj.captured
+            isCapture: !!moveObj.captured,
           });
 
           this.updateMoveHistoryTable();
@@ -461,14 +580,18 @@ class ChessApp {
       const res = await fetch("/api/apply_move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fen: this.currentFen, uci: moveUci })
+        body: JSON.stringify({ fen: this.currentFen, uci: moveUci }),
       });
       const data = await res.json();
       if (data.error) return;
 
       this.currentFen = data.fen;
       this.lastMove = { from: fromSq, to: toSq };
-      this.moveHistory.push({ san: data.san, uci: moveUci, isCapture: data.isCapture });
+      this.moveHistory.push({
+        san: data.san,
+        uci: moveUci,
+        isCapture: data.isCapture,
+      });
 
       this.updateMoveHistoryTable();
       this.updateEvalBar(data.eval);
@@ -502,6 +625,10 @@ class ChessApp {
     const depth = parseInt(document.getElementById("depthSlider").value);
     const sims = parseInt(document.getElementById("simsSlider").value);
 
+    let data = null;
+    const startTime = performance.now();
+
+    // 1. Try PyTorch / ONNX backend server
     try {
       const res = await fetch("/api/move", {
         method: "POST",
@@ -510,56 +637,96 @@ class ChessApp {
           fen: this.currentFen,
           engine: engineType,
           depth: depth,
-          simulations: sims
-        })
+          simulations: sims,
+        }),
       });
-      const data = await res.json();
-
-      this.isThinking = false;
-      document.getElementById("statStatus").textContent = "Live Match";
-
-      if (data.error || !data.uci) {
-        console.warn("AI resigns or failed:", data.error);
-        return;
-      }
-
-      const fromSq = data.uci.slice(0, 2);
-      const toSq = data.uci.slice(2, 4);
-
-      this.currentFen = data.fen;
-      this.lastMove = { from: fromSq, to: toSq };
-      this.moveHistory.push({ san: data.san, uci: data.uci, isCapture: data.isCapture });
-
-      this.updateMoveHistoryTable();
-      this.updateEvalBar(data.eval);
-      this.renderBoard(); // RENDER BOARD INSTANTLY BEFORE AUDIO!
-
-      if (data.isCapture) soundFx.playCapture();
-      else soundFx.playMove();
-
-      if (data.isCheck) soundFx.playCheck();
-
-      const calcTime = data.calcTimeMs ? `${data.calcTimeMs.toFixed(0)}ms` : "0ms";
-      document.getElementById("statTime").textContent = calcTime;
-      const evalVal = typeof data.eval === "number" ? data.eval : 0.0;
-      document.getElementById("statEval").textContent = `${evalVal > 0 ? "+" : ""}${evalVal.toFixed(2)}`;
-
-
-      if (data.isGameOver) {
-        this.handleGameOver(data.result);
-      } else if (this.playerColor === "self") {
-        setTimeout(() => this.triggerAiMove(), 500);
+      if (res.ok) {
+        data = await res.json();
       }
     } catch (err) {
-      this.isThinking = false;
-      console.error("AI move error:", err);
+      // Backend HTTP unreachable (e.g. static Streamlit iframe)
+    }
+
+    // 2. Client-side fallback solver if server is unreachable
+    if (!data || !data.uci) {
+      if (typeof Chess !== "undefined") {
+        try {
+          const game = new Chess(this.currentFen);
+          if (!game.game_over()) {
+            const isWhite = game.turn() === "w";
+            const res = minimaxJS(game, depth, -Infinity, Infinity, isWhite);
+            if (res.move) {
+              const moveObj = game.move(res.move);
+              const calcTimeMs = performance.now() - startTime;
+              let gameRes = null;
+              if (game.game_over()) {
+                gameRes = "1/2-1/2";
+                if (game.in_checkmate()) gameRes = game.turn() === "w" ? "0-1" : "1-0";
+              }
+              data = {
+                uci: `${res.move.from}${res.move.to}${res.move.promotion || ""}`,
+                san: moveObj.san,
+                fen: game.fen(),
+                isCapture: !!moveObj.captured,
+                isCheck: game.in_check(),
+                isGameOver: game.game_over(),
+                result: gameRes,
+                eval: Math.max(-1.0, Math.min(1.0, res.score / 600.0)),
+                calcTimeMs: Math.round(calcTimeMs),
+              };
+            }
+          }
+        } catch (e) {
+          console.warn("Client AI search error:", e);
+        }
+      }
+    }
+
+    this.isThinking = false;
+    document.getElementById("statStatus").textContent = "Live Match";
+
+    if (!data || !data.uci) {
+      return;
+    }
+
+    const fromSq = data.uci.slice(0, 2);
+    const toSq = data.uci.slice(2, 4);
+
+    this.currentFen = data.fen;
+    this.lastMove = { from: fromSq, to: toSq };
+    this.moveHistory.push({
+      san: data.san,
+      uci: data.uci,
+      isCapture: data.isCapture,
+    });
+
+    this.updateMoveHistoryTable();
+    this.updateEvalBar(data.eval);
+    this.renderBoard();
+
+    if (data.isCapture) soundFx.playCapture();
+    else soundFx.playMove();
+
+    if (data.isCheck) soundFx.playCheck();
+
+    const calcTime = data.calcTimeMs ? `${data.calcTimeMs}ms` : "0ms";
+    document.getElementById("statTime").textContent = calcTime;
+    const evalVal = typeof data.eval === "number" ? data.eval : 0.0;
+    document.getElementById("statEval").textContent =
+      `${evalVal > 0 ? "+" : ""}${evalVal.toFixed(2)}`;
+
+    if (data.isGameOver) {
+      this.handleGameOver(data.result);
+    } else if (this.playerColor === "self") {
+      setTimeout(() => this.triggerAiMove(), 400);
     }
   }
 
   async undoMove() {
     if (this.moveHistory.length === 0 || this.isThinking) return;
 
-    const steps = (this.playerColor === "self" || this.moveHistory.length === 1) ? 1 : 2;
+    const steps =
+      this.playerColor === "self" || this.moveHistory.length === 1 ? 1 : 2;
     for (let i = 0; i < steps; i++) {
       if (this.moveHistory.length > 0) {
         this.moveHistory.pop();
@@ -572,7 +739,7 @@ class ChessApp {
       const res = await fetch("/api/undo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ moves: remainingUcis })
+        body: JSON.stringify({ moves: remainingUcis }),
       });
       const data = await res.json();
       this.currentFen = data.fen;
@@ -604,7 +771,6 @@ class ChessApp {
     }
   }
 
-
   updateMoveHistoryTable() {
     const tbody = document.getElementById("moveHistoryBody");
     tbody.innerHTML = "";
@@ -615,17 +781,22 @@ class ChessApp {
       numCell.textContent = `${Math.floor(i / 2) + 1}.`;
 
       const whiteCell = document.createElement("td");
-      whiteCell.textContent = this.moveHistory[i] ? this.moveHistory[i].san : "";
+      whiteCell.textContent = this.moveHistory[i]
+        ? this.moveHistory[i].san
+        : "";
 
       const blackCell = document.createElement("td");
-      blackCell.textContent = this.moveHistory[i + 1] ? this.moveHistory[i + 1].san : "";
+      blackCell.textContent = this.moveHistory[i + 1]
+        ? this.moveHistory[i + 1].san
+        : "";
 
       row.appendChild(numCell);
       row.appendChild(whiteCell);
       row.appendChild(blackCell);
       tbody.appendChild(row);
     }
-    tbody.parentElement.parentElement.scrollTop = tbody.parentElement.parentElement.scrollHeight;
+    tbody.parentElement.parentElement.scrollTop =
+      tbody.parentElement.parentElement.scrollHeight;
   }
 
   handleGameOver(result) {

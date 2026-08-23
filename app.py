@@ -379,7 +379,9 @@ if is_st_active:
     with open(js_path, "r", encoding="utf-8") as f:
         js_content = f.read()
 
-    js_content_updated = js_content
+    target_fetch = 'fetch("/api/'
+    replacement_fetch = f'fetch("http://127.0.0.1:{port}/api/'
+    js_content_updated = js_content.replace(target_fetch, replacement_fetch)
 
     import re
     full_html = re.sub(
@@ -398,7 +400,10 @@ if is_st_active:
         full_html
     )
 
-    st.components.v1.html(full_html, height=850, scrolling=True)
+    if hasattr(st, "iframe"):
+        st.iframe(full_html, height=850)
+    else:
+        st.components.v1.html(full_html, height=850, scrolling=True)
 
 
 elif __name__ == "__main__":
