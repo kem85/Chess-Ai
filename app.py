@@ -374,14 +374,18 @@ if is_st_active:
     with open(js_path, "r", encoding="utf-8") as f:
         js_content = f.read()
 
-    # Embed CSS inline and point API requests to local backend server port
+    target_fetch = 'fetch("/'
+    replacement_fetch = f'fetch("http://localhost:{port}/'
+    js_content_updated = js_content.replace(target_fetch, replacement_fetch)
+
     full_html = html_content.replace(
         '<link rel="stylesheet" href="/static/style.css">',
         f'<style>{css_content}</style>'
     ).replace(
         '<script src="/static/app.js"></script>',
-        f'<script>{js_content.replace("fetch(\"/", f"fetch(\"http://localhost:{port}/")}</script>'
+        f'<script>{js_content_updated}</script>'
     )
+
 
     if hasattr(st, "iframe"):
         st.iframe(f"http://localhost:{port}", height=760)
