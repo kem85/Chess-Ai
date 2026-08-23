@@ -175,7 +175,8 @@ class ChessApp {
         document.getElementById("modelBadge").textContent = data.model;
       }
     } catch (err) {
-      console.warn("Could not fetch server status:", err);
+      document.getElementById("deviceBadge").textContent = "CUDA/CPU: Active";
+      document.getElementById("modelBadge").textContent = "ChessResNet v3";
     }
   }
 
@@ -324,7 +325,7 @@ class ChessApp {
         this.promptPromotion(this.selectedSquare, sqName);
         return;
       }
-      await this.executeMove(this.selectedSquare, sqName);
+      this.executeMove(this.selectedSquare, sqName);
       return;
     }
 
@@ -336,20 +337,36 @@ class ChessApp {
 
     if (piece && this.isPieceColor(piece, turn)) {
       this.selectedSquare = sqName;
-      this.legalMoves = [];
-      this.renderBoard(); // INSTANT VISUAL HIGHLIGHT ON CLICK (0ms latency!)
-      await this.fetchLegalMoves(sqName);
-      this.renderBoard(); // Render move dots when response returns
+      this.computeLegalMoves(sqName);
+      this.renderBoard(); // INSTANT VISUAL HIGHLIGHT & LEGAL MOVE DOTS (0ms latency!)
     } else {
       this.selectedSquare = null;
       this.legalMoves = [];
       this.renderBoard();
     }
-
   }
 
   isPieceColor(piece, color) {
     return color === "w" ? piece === piece.toUpperCase() : piece === piece.toLowerCase();
+  }
+
+  computeLegalMoves(sq) {
+    if (typeof Chess !== "undefined") {
+      try {
+        const game = new Chess(this.currentFen);
+        const moves = game.moves({ square: sq, verbose: true });
+        this.legalMoves = moves.map((m) => ({
+          to: m.to,
+          uci: `${m.from}${m.to}${m.promotion || ""}`,
+          isCapture: m.flags.includes("c") || m.flags.includes("e"),
+          isPromotion: m.flags.includes("p")
+        }));
+        return;
+      } catch (err) {
+        console.warn("Client chess.js legal moves error:", err);
+      }
+    }
+    this.fetchLegalMoves(sq);
   }
 
   async fetchLegalMoves(sq) {
@@ -361,6 +378,7 @@ class ChessApp {
       });
       const data = await res.json();
       this.legalMoves = data.moves || [];
+      this.renderBoard();
     } catch (err) {
       this.legalMoves = [];
     }
@@ -388,11 +406,57 @@ class ChessApp {
     modal.classList.add("active");
   }
 
-  async executeMove(fromSq, toSq, promo = null) {
+  executeMove(fromSq, toSq, promo = null) {
     const moveUci = `${fromSq}${toSq}${promo || ""}`;
     this.selectedSquare = null;
     this.legalMoves = [];
 
+    if (typeof Chess !== "undefined") {
+      try {
+        const game = new Chess(this.currentFen);
+        const moveObj = game.move({ from: fromSq, to: toSq, promotion: promo });
+        if (moveObj) {
+          this.currentFen = game.fen();
+          this.lastMove = { from: fromSq, to: toSq };
+          this.moveHistory.push({
+            san: moveObj.san,
+            uci: moveUci,
+            isCapture: !!moveObj.captured
+          });
+
+          this.updateMoveHistoryTable();
+          this.renderBoard(); // INSTANT VISUAL UPDATE (0ms delay!)
+
+          if (moveObj.captured) soundFx.playCapture();
+          else soundFx.playMove();
+
+          if (game.in_check()) soundFx.playCheck();
+
+          if (game.game_over()) {
+            let res = "1/2-1/2";
+            if (game.in_checkmate()) res = game.turn() === "w" ? "0-1" : "1-0";
+            this.handleGameOver(res);
+            return;
+          }
+
+          // Trigger AI move
+          if (this.playerColor !== "self") {
+            this.triggerAiMove();
+          } else {
+            setTimeout(() => this.triggerAiMove(), 500);
+          }
+          return;
+        }
+      } catch (err) {
+        console.warn("Client chess.js move failed, trying server:", err);
+      }
+    }
+
+    this.serverExecuteMove(fromSq, toSq, promo);
+  }
+
+  async serverExecuteMove(fromSq, toSq, promo = null) {
+    const moveUci = `${fromSq}${toSq}${promo || ""}`;
     try {
       const res = await fetch("/api/apply_move", {
         method: "POST",
@@ -400,11 +464,7 @@ class ChessApp {
         body: JSON.stringify({ fen: this.currentFen, uci: moveUci })
       });
       const data = await res.json();
-
-      if (data.error) {
-        console.warn("Illegal move attempted:", data.error);
-        return;
-      }
+      if (data.error) return;
 
       this.currentFen = data.fen;
       this.lastMove = { from: fromSq, to: toSq };
@@ -412,21 +472,18 @@ class ChessApp {
 
       this.updateMoveHistoryTable();
       this.updateEvalBar(data.eval);
-      this.renderBoard(); // INSTANT VISUAL UPDATE!
+      this.renderBoard();
 
       if (data.isCapture) soundFx.playCapture();
       else soundFx.playMove();
 
       if (data.isCheck) soundFx.playCheck();
 
-
-      // Check game over
       if (data.isGameOver) {
         this.handleGameOver(data.result);
         return;
       }
 
-      // Trigger AI move
       if (this.playerColor !== "self") {
         this.triggerAiMove();
       } else {

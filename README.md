@@ -2,30 +2,30 @@
 
 # ♟️ Chess-AI: Deep Residual Neural Network Engine & Web Arena
 
-### *A 10-Block Dual-Head ResNet Architecture with Alpha-Beta Minimax & AlphaZero MCTS Search* 🔥
+### *Think you can outsmart a 10-block Deep Residual Neural Network?* 🔥
 
-**Chess-AI** brings high-performance neural chess evaluation straight to your browser and terminal. Powered by PyTorch and ONNX Runtime INT8 quantization, it features an interactive **Web Arena**, a **CLI terminal interface**, dual policy-guided search algorithms, and automated match gauntlets.
+**Chess-AI** brings the power of **AlphaZero** straight to your desktop and browser with an interactive **Web Arena**! Powered by PyTorch and ONNX Runtime INT8 quantization, it features an interactive **Web GUI**, a **CLI terminal interface**, dual policy-guided search algorithms, and automated match gauntlets.
 
 <br/>
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chess-ai-ml.streamlit.app)
+[![Try Live Demo](https://img.shields.io/badge/🎮%20Try%20Live%20Demo-chess--ai--ml.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://chess-ai-ml.streamlit.app)
+
+<br/>
+
 [![CI](https://img.shields.io/badge/CI-Passing-2ea44f.svg?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/kem85/Chess-Ai/actions)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX-INT8%20Quantized-005CED.svg?style=flat-square&logo=onnx&logoColor=white)](https://onnxruntime.ai/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-<br/>
-
-[🎮 Live Demo](https://chess-ai-ml.streamlit.app) • [🚀 Quick Start](#-quick-start) • [✨ Key Features](#-key-features) • [🧠 Neural Architecture](#-neural-architecture) • [🌲 Search Algorithms](#-search-algorithms-minimax-vs-mcts) • [⚡ Benchmarking & CLI](#-cli--benchmarking)
-
 </div>
 
 ---
 
-## 🌐 Live Web Demo
+## ⚡ Play Instantly in Your Browser! No Install Needed
 
-Play immediately in your browser without installing anything:  
+Experience the neural engine right now directly in your web browser:
+
 👉 **[chess-ai-ml.streamlit.app](https://chess-ai-ml.streamlit.app)** ♟️
 
 ---
@@ -35,11 +35,11 @@ Play immediately in your browser without installing anything:
 ### 1. Installation
 
 ```bash
-# Clone the repository
+# 1. Clone the repository to your local machine
 git clone https://github.com/kem85/Chess-Ai.git
 cd Chess-Ai
 
-# Install dependencies
+# 2. Install all required dependencies (PyTorch, ONNX Runtime, python-chess, Streamlit)
 pip install -r requirements.txt
 ```
 
@@ -48,14 +48,14 @@ pip install -r requirements.txt
 You can run the web application in **Standalone Python** mode or via **Streamlit**:
 
 ```bash
-# Standalone Web Application (Recommended)
+# Option A: Run the Standalone Web Arena (Recommended)
 python app.py
 
-# Or via Streamlit
+# Option B: Run via Streamlit Engine
 streamlit run app.py
 ```
 
-> 🎯 **Browser Access**: Automatically launches at **`http://127.0.0.1:8000`** (or `http://localhost:8501` under Streamlit). Simply click or drag pieces with your mouse, view real-time engine evaluation, and adjust search parameters on the fly!
+> 🎯 **Browser Access**: Automatically opens at **`http://127.0.0.1:8000`** (or `http://localhost:8501` under Streamlit). Simply click or drag pieces with your mouse, watch legal moves highlight, and challenge the AI!
 
 ---
 
@@ -144,10 +144,10 @@ Choose between two neural-guided search strategies:
 Play directly inside your terminal with Unicode board rendering and box-drawing graphics:
 
 ```bash
-# Play as White against Minimax search (Depth 3)
+# Option 1: Play as White against Minimax search at Lookahead Depth 3
 python play.py --color white --engine minimax --depth 3
 
-# Play as Black against MCTS (200 simulations)
+# Option 2: Play as Black against MCTS engine with 200 PUCT simulations
 python play.py --color black --engine mcts --simulations 200
 ```
 
@@ -156,7 +156,7 @@ python play.py --color black --engine mcts --simulations 200
 Run automated self-play gauntlets and export formatted match PGN records to `pgn_exports/`:
 
 ```bash
-# Run a 10-game self-play benchmark
+# Run a 10-game automated self-play duel and export match PGN records
 python benchmark.py --games 10 --depth 3
 ```
 
@@ -167,32 +167,8 @@ python benchmark.py --games 10 --depth 3
 Run unit tests across tensor encodings, neural network forward passes, and search algorithms:
 
 ```bash
+# Execute unit tests for tensor encodings, ResNet forward passes, and search algorithms
 pytest
-```
-
----
-
-## 📁 Repository Structure
-
-```text
-Chess-Ai/
-├── app.py              # Web Application server (HTTP API & Streamlit runner)
-├── play.py             # Terminal CLI interactive game interface
-├── benchmark.py        # Automated self-play benchmarking gauntlet
-├── src/                # Core engine architecture
-│   ├── encoder.py      # Board tensor & 4864 action space encoder
-│   ├── model.py        # 10-Block Dual-Head ResNet model architecture
-│   ├── search.py       # Policy-guided Alpha-Beta Minimax algorithm
-│   ├── mcts.py         # AlphaZero MCTS PUCT implementation
-│   ├── onnx_engine.py  # INT8 quantized ONNX Runtime inference engine
-│   └── ui.py           # Terminal ANSI color & box-drawing renderer
-├── web/                # Web GUI assets
-│   ├── index.html      # Glassmorphism arena layout
-│   ├── style.css       # Responsive dark-theme design system
-│   └── app.js         # Interactive SVG chessboard & Web Audio FX
-├── models/             # PyTorch (.pth) and ONNX (.onnx) model checkpoints
-├── tests/              # Pytest unit tests for model, encoder, and search
-└── requirements.txt    # Project dependencies
 ```
 
 ---

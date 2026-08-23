@@ -1,181 +1,235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>♟️ Chess-AI: Deep Residual Neural Network Arena</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="brand">
-        <div class="logo-icon">♟️</div>
-        <div>
-          <h1 class="logo-title">Chess-AI</h1>
-          <p class="logo-subtitle">Dual-Head ResNet & MCTS Neural Arena</p>
-        </div>
-      </div>
-      <div class="header-badges">
-        <button class="badge badge-sound" id="btnSoundToggle" title="Toggle Sound (Mute/Unmute)">🔊 Sound</button>
-        <span class="badge badge-gpu" id="deviceBadge">CUDA: Active</span>
-        <span class="badge badge-model" id="modelBadge">ChessResNet v3</span>
-        <a href="https://github.com/kem85/Chess-Ai" target="_blank" class="badge badge-github">GitHub ↗</a>
-      </div>
-    </header>
-
-    <!-- Main Workspace -->
-    <main class="main-layout">
-      <!-- Left: Live Evaluation Bar & Telemetry -->
-      <aside class="eval-column">
-        <div class="eval-meter-container">
-          <div class="eval-score-top" id="evalScoreTop">+0.0</div>
-          <div class="eval-bar-track">
-            <div class="eval-bar-fill" id="evalBarFill" style="height: 50%;"></div>
-            <div class="eval-bar-center-line"></div>
-          </div>
-          <div class="eval-score-bottom" id="evalScoreBottom">-0.0</div>
-        </div>
-        <div class="eval-indicator" id="evalIndicatorText">0.00</div>
-      </aside>
-
-      <!-- Center: Chess Arena -->
-      <section class="board-section">
-        <!-- Top Player Card (Opponent / AI) -->
-        <div class="player-card" id="topPlayerCard">
-          <div class="player-avatar ai-avatar">🤖</div>
-          <div class="player-info">
-            <div class="player-name" id="topPlayerName">AI Engine (White)</div>
-            <div class="player-meta" id="topPlayerMeta">ResNet • Depth 3</div>
-          </div>
-          <div class="captured-box" id="topCapturedBox"></div>
-          <div class="player-clock" id="topPlayerStatus">Waiting</div>
-        </div>
-
-        <!-- Interactive Board Container -->
-        <div class="board-wrapper">
-          <div class="chessboard" id="chessboard">
-            <!-- Squares generated dynamically via JS -->
-          </div>
-          <!-- Promotion Modal Overlay -->
-          <div class="promotion-modal" id="promotionModal">
-            <div class="promotion-title">Promote Pawn</div>
-            <div class="promotion-choices" id="promotionChoices"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>♟️ Chess-AI: Deep Residual Neural Network Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="brand">
+          <div class="logo-icon">♟️</div>
+          <div>
+            <h1 class="logo-title">Chess-AI</h1>
+            <p class="logo-subtitle">Dual-Head ResNet & MCTS Neural Arena</p>
           </div>
         </div>
-
-        <!-- Bottom Player Card (Human / User) -->
-        <div class="player-card" id="bottomPlayerCard">
-          <div class="player-avatar human-avatar">👤</div>
-          <div class="player-info">
-            <div class="player-name" id="bottomPlayerName">You (Black)</div>
-            <div class="player-meta" id="bottomPlayerMeta">Human Challenger</div>
-          </div>
-          <div class="captured-box" id="bottomCapturedBox"></div>
-          <div class="player-clock active-turn" id="bottomPlayerStatus">Your Turn</div>
+        <div class="header-badges">
+          <button
+            class="badge badge-sound"
+            id="btnSoundToggle"
+            title="Toggle Sound (Mute/Unmute)"
+          >
+            🔊 Sound
+          </button>
+          <span class="badge badge-gpu" id="deviceBadge">CUDA: Active</span>
+          <span class="badge badge-model" id="modelBadge">ChessResNet v3</span>
+          <a
+            href="https://github.com/kem85/Chess-Ai"
+            target="_blank"
+            class="badge badge-github"
+            >GitHub ↗</a
+          >
         </div>
-      </section>
+      </header>
 
-      <!-- Right: Control Panel & Match Logs -->
-      <aside class="control-sidebar">
-        <!-- Engine Configuration Card -->
-        <div class="glass-card">
-          <h2 class="card-title">⚙️ Engine Configuration</h2>
-
-          <div class="form-group">
-            <label for="engineSelect">Search Algorithm</label>
-            <select id="engineSelect" class="form-control">
-              <option value="minimax" selected>Alpha-Beta Minimax (Policy-Directed)</option>
-              <option value="mcts">AlphaZero MCTS (PUCT Simulations)</option>
-            </select>
-          </div>
-
-          <div class="form-group" id="depthGroup">
-            <div class="slider-header">
-              <label for="depthSlider">Lookahead Depth</label>
-              <span class="slider-val" id="depthVal">3</span>
+      <!-- Main Workspace -->
+      <main class="main-layout">
+        <!-- Left: Live Evaluation Bar & Telemetry -->
+        <aside class="eval-column">
+          <div class="eval-meter-container">
+            <div class="eval-score-top" id="evalScoreTop">+0.0</div>
+            <div class="eval-bar-track">
+              <div
+                class="eval-bar-fill"
+                id="evalBarFill"
+                style="height: 50%"
+              ></div>
+              <div class="eval-bar-center-line"></div>
             </div>
-            <input type="range" id="depthSlider" min="1" max="6" value="3" class="form-range">
+            <div class="eval-score-bottom" id="evalScoreBottom">-0.0</div>
           </div>
+          <div class="eval-indicator" id="evalIndicatorText">0.00</div>
+        </aside>
 
-          <div class="form-group hidden" id="simsGroup">
-            <div class="slider-header">
-              <label for="simsSlider">MCTS Simulations</label>
-              <span class="slider-val" id="simsVal">200</span>
+        <!-- Center: Chess Arena -->
+        <section class="board-section">
+          <!-- Top Player Card (Opponent / AI) -->
+          <div class="player-card" id="topPlayerCard">
+            <div class="player-avatar ai-avatar">🤖</div>
+            <div class="player-info">
+              <div class="player-name" id="topPlayerName">
+                AI Engine (White)
+              </div>
+              <div class="player-meta" id="topPlayerMeta">ResNet • Depth 3</div>
             </div>
-            <input type="range" id="simsSlider" min="50" max="800" step="50" value="200" class="form-range">
+            <div class="captured-box" id="topCapturedBox"></div>
+            <div class="player-clock" id="topPlayerStatus">Waiting</div>
           </div>
 
-          <div class="form-group">
-            <label>Play As</label>
-            <div class="btn-group">
-              <button class="btn btn-pill active" id="btnPlayWhite">White</button>
-              <button class="btn btn-pill" id="btnPlayBlack">Black</button>
-              <button class="btn btn-pill" id="btnSelfPlay">Self-Play</button>
+          <!-- Interactive Board Container -->
+          <div class="board-wrapper">
+            <div class="chessboard" id="chessboard">
+              <!-- Squares generated dynamically via JS -->
+            </div>
+            <!-- Promotion Modal Overlay -->
+            <div class="promotion-modal" id="promotionModal">
+              <div class="promotion-title">Promote Pawn</div>
+              <div class="promotion-choices" id="promotionChoices"></div>
             </div>
           </div>
-        </div>
 
-        <!-- Game Actions Card -->
-        <div class="glass-card">
-          <h2 class="card-title">🎮 Game Actions</h2>
-          <div class="action-buttons">
-            <button class="btn btn-primary" id="btnNewGame">✨ New Game</button>
-            <button class="btn btn-secondary" id="btnUndo">↩️ Undo Move</button>
-            <button class="btn btn-secondary" id="btnFlip">🔄 Flip Board</button>
-            <button class="btn btn-secondary" id="btnExportPGN">📜 Export PGN</button>
-          </div>
-        </div>
-
-        <!-- Telemetry & Live Stats -->
-        <div class="glass-card">
-          <h2 class="card-title">📡 Neural Telemetry</h2>
-          <div class="telemetry-grid">
-            <div class="telemetry-item">
-              <span class="telemetry-label">Last Move Time</span>
-              <span class="telemetry-value" id="statTime">0.00s</span>
+          <!-- Bottom Player Card (Human / User) -->
+          <div class="player-card" id="bottomPlayerCard">
+            <div class="player-avatar human-avatar">👤</div>
+            <div class="player-info">
+              <div class="player-name" id="bottomPlayerName">You (Black)</div>
+              <div class="player-meta" id="bottomPlayerMeta">
+                Human Challenger
+              </div>
             </div>
-            <div class="telemetry-item">
-              <span class="telemetry-label">Engine Eval</span>
-              <span class="telemetry-value" id="statEval">+0.00</span>
-            </div>
-            <div class="telemetry-item">
-              <span class="telemetry-label">Material Delta</span>
-              <span class="telemetry-value" id="statMaterial">Even</span>
-            </div>
-            <div class="telemetry-item">
-              <span class="telemetry-label">Game Status</span>
-              <span class="telemetry-value status-active" id="statStatus">Live Match</span>
+            <div class="captured-box" id="bottomCapturedBox"></div>
+            <div class="player-clock active-turn" id="bottomPlayerStatus">
+              Your Turn
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Move History Table -->
-        <div class="glass-card history-card">
-          <h2 class="card-title">📜 Move Notation</h2>
-          <div class="history-table-container">
-            <table class="history-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>White</th>
-                  <th>Black</th>
-                </tr>
-              </thead>
-              <tbody id="moveHistoryBody">
-                <!-- Move pairs added dynamically -->
-              </tbody>
-            </table>
+        <!-- Right: Control Panel & Match Logs -->
+        <aside class="control-sidebar">
+          <!-- Engine Configuration Card -->
+          <div class="glass-card">
+            <h2 class="card-title">⚙️ Engine Configuration</h2>
+
+            <div class="form-group">
+              <label for="engineSelect">Search Algorithm</label>
+              <select id="engineSelect" class="form-control">
+                <option value="minimax" selected>
+                  Alpha-Beta Minimax (Policy-Directed)
+                </option>
+                <option value="mcts">AlphaZero MCTS (PUCT Simulations)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="depthGroup">
+              <div class="slider-header">
+                <label for="depthSlider">Lookahead Depth</label>
+                <span class="slider-val" id="depthVal">3</span>
+              </div>
+              <input
+                type="range"
+                id="depthSlider"
+                min="1"
+                max="6"
+                value="3"
+                class="form-range"
+              />
+            </div>
+
+            <div class="form-group hidden" id="simsGroup">
+              <div class="slider-header">
+                <label for="simsSlider">MCTS Simulations</label>
+                <span class="slider-val" id="simsVal">200</span>
+              </div>
+              <input
+                type="range"
+                id="simsSlider"
+                min="50"
+                max="800"
+                step="50"
+                value="200"
+                class="form-range"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Play As</label>
+              <div class="btn-group">
+                <button class="btn btn-pill active" id="btnPlayWhite">
+                  White
+                </button>
+                <button class="btn btn-pill" id="btnPlayBlack">Black</button>
+                <button class="btn btn-pill" id="btnSelfPlay">Self-Play</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </aside>
-    </main>
-  </div>
 
-  <script src="/static/app.js"></script>
-</body>
+          <!-- Game Actions Card -->
+          <div class="glass-card">
+            <h2 class="card-title">🎮 Game Actions</h2>
+            <div class="action-buttons">
+              <button class="btn btn-primary" id="btnNewGame">
+                ✨ New Game
+              </button>
+              <button class="btn btn-secondary" id="btnUndo">
+                ↩️ Undo Move
+              </button>
+              <button class="btn btn-secondary" id="btnFlip">
+                🔄 Flip Board
+              </button>
+              <button class="btn btn-secondary" id="btnExportPGN">
+                📜 Export PGN
+              </button>
+            </div>
+          </div>
+
+          <!-- Telemetry & Live Stats -->
+          <div class="glass-card">
+            <h2 class="card-title">📡 Neural Telemetry</h2>
+            <div class="telemetry-grid">
+              <div class="telemetry-item">
+                <span class="telemetry-label">Last Move Time</span>
+                <span class="telemetry-value" id="statTime">0.00s</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="telemetry-label">Engine Eval</span>
+                <span class="telemetry-value" id="statEval">+0.00</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="telemetry-label">Material Delta</span>
+                <span class="telemetry-value" id="statMaterial">Even</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="telemetry-label">Game Status</span>
+                <span class="telemetry-value status-active" id="statStatus"
+                  >Live Match</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Move History Table -->
+          <div class="glass-card history-card">
+            <h2 class="card-title">📜 Move Notation</h2>
+            <div class="history-table-container">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>White</th>
+                    <th>Black</th>
+                  </tr>
+                </thead>
+                <tbody id="moveHistoryBody">
+                  <!-- Move pairs added dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="/static/chess.min.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
 </html>

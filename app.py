@@ -105,6 +105,8 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
             self.serve_static_file("web/index.html", "text/html")
         elif path == "/static/style.css":
             self.serve_static_file("web/style.css", "text/css")
+        elif path == "/static/chess.min.js":
+            self.serve_static_file("web/chess.min.js", "application/javascript")
         elif path == "/static/app.js":
             self.serve_static_file("web/app.js", "application/javascript")
         elif path == "/api/status":
@@ -365,22 +367,26 @@ if is_st_active:
 
     html_path = os.path.join(os.path.dirname(__file__), "web", "index.html")
     css_path = os.path.join(os.path.dirname(__file__), "web", "style.css")
+    chess_js_path = os.path.join(os.path.dirname(__file__), "web", "chess.min.js")
     js_path = os.path.join(os.path.dirname(__file__), "web", "app.js")
 
     with open(html_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     with open(css_path, "r", encoding="utf-8") as f:
         css_content = f.read()
+    with open(chess_js_path, "r", encoding="utf-8") as f:
+        chess_js_content = f.read()
     with open(js_path, "r", encoding="utf-8") as f:
         js_content = f.read()
 
-    target_fetch = 'fetch("/'
-    replacement_fetch = f'fetch("http://127.0.0.1:{port}/'
-    js_content_updated = js_content.replace(target_fetch, replacement_fetch)
+    js_content_updated = js_content
 
     full_html = html_content.replace(
         '<link rel="stylesheet" href="/static/style.css">',
         f'<style>{css_content}</style>'
+    ).replace(
+        '<script src="/static/chess.min.js"></script>',
+        f'<script>{chess_js_content}</script>'
     ).replace(
         '<script src="/static/app.js"></script>',
         f'<script>{js_content_updated}</script>'
