@@ -379,9 +379,7 @@ if is_st_active:
     with open(js_path, "r", encoding="utf-8") as f:
         js_content = f.read()
 
-    target_fetch = 'fetch("/api/'
-    replacement_fetch = f'fetch("http://127.0.0.1:{port}/api/'
-    js_content_updated = js_content.replace(target_fetch, replacement_fetch)
+    js_content_updated = js_content
 
     import re
     full_html = re.sub(
