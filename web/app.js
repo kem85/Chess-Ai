@@ -336,12 +336,16 @@ class ChessApp {
 
     if (piece && this.isPieceColor(piece, turn)) {
       this.selectedSquare = sqName;
+      this.legalMoves = [];
+      this.renderBoard(); // INSTANT VISUAL HIGHLIGHT ON CLICK (0ms latency!)
       await this.fetchLegalMoves(sqName);
+      this.renderBoard(); // Render move dots when response returns
     } else {
       this.selectedSquare = null;
       this.legalMoves = [];
+      this.renderBoard();
     }
-    this.renderBoard();
+
   }
 
   isPieceColor(piece, color) {
@@ -406,14 +410,15 @@ class ChessApp {
       this.lastMove = { from: fromSq, to: toSq };
       this.moveHistory.push({ san: data.san, uci: moveUci, isCapture: data.isCapture });
 
+      this.updateMoveHistoryTable();
+      this.updateEvalBar(data.eval);
+      this.renderBoard(); // INSTANT VISUAL UPDATE!
+
       if (data.isCapture) soundFx.playCapture();
       else soundFx.playMove();
 
       if (data.isCheck) soundFx.playCheck();
 
-      this.updateMoveHistoryTable();
-      this.updateEvalBar(data.eval);
-      this.renderBoard();
 
       // Check game over
       if (data.isGameOver) {
@@ -468,17 +473,20 @@ class ChessApp {
       this.lastMove = { from: fromSq, to: toSq };
       this.moveHistory.push({ san: data.san, uci: data.uci, isCapture: data.isCapture });
 
+      this.updateMoveHistoryTable();
+      this.updateEvalBar(data.eval);
+      this.renderBoard(); // RENDER BOARD INSTANTLY BEFORE AUDIO!
+
       if (data.isCapture) soundFx.playCapture();
       else soundFx.playMove();
 
       if (data.isCheck) soundFx.playCheck();
 
-      document.getElementById("statTime").textContent = `${data.elapsed.toFixed(2)}s`;
-      document.getElementById("statEval").textContent = `${data.eval > 0 ? "+" : ""}${data.eval.toFixed(2)}`;
+      const calcTime = data.calcTimeMs ? `${data.calcTimeMs.toFixed(0)}ms` : "0ms";
+      document.getElementById("statTime").textContent = calcTime;
+      const evalVal = typeof data.eval === "number" ? data.eval : 0.0;
+      document.getElementById("statEval").textContent = `${evalVal > 0 ? "+" : ""}${evalVal.toFixed(2)}`;
 
-      this.updateMoveHistoryTable();
-      this.updateEvalBar(data.eval);
-      this.renderBoard();
 
       if (data.isGameOver) {
         this.handleGameOver(data.result);
@@ -528,9 +536,17 @@ class ChessApp {
     const percent = ((clamped + 1.0) / 2.0) * 100;
     this.evalFill.style.height = `${percent}%`;
     const sign = score > 0 ? "+" : "";
+    const scoreStr = `${sign}${score.toFixed(1)}`;
     this.evalText.textContent = `${sign}${score.toFixed(2)}`;
-    this.evalTop.textContent = `${sign}${score.toFixed(1)}`;
+    if (score >= 0) {
+      this.evalTop.textContent = scoreStr;
+      this.evalBottom.textContent = "";
+    } else {
+      this.evalTop.textContent = "";
+      this.evalBottom.textContent = scoreStr;
+    }
   }
+
 
   updateMoveHistoryTable() {
     const tbody = document.getElementById("moveHistoryBody");

@@ -1,12 +1,15 @@
 """
-Chess-AI Web Application Server
-Serves interactive web arena and REST API for neural network evaluation and move search.
+Chess-AI Web Application Server & Streamlit Edition
+Serves interactive web arena with on-board piece movement, vertical evaluation bar,
+and REST API for neural network evaluation and move search.
+Hostable on Streamlit Cloud or standalone via python app.py.
 """
 
 import os
 import sys
 import json
 import time
+import socket
 import webbrowser
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -26,11 +29,15 @@ MODEL = None
 MODEL_TYPE = "pytorch"
 MODEL_NAME = "chess_model_v3.pth"
 GAME_BOARD = chess.Board()
+SERVER_PORT = 8000
+SERVER_THREAD = None
 
 
 def load_best_model():
     """Loads the pre-trained weights from models directory."""
     global MODEL, MODEL_TYPE, MODEL_NAME
+    if MODEL is not None:
+        return
     candidates = [
         ("models/chess_model_v3.pth", "pytorch"),
         ("models/chess_resnet_int8.onnx", "onnx"),
@@ -69,6 +76,16 @@ def get_position_evaluation(board: chess.Board) -> float:
 
 
 class ChessAPIHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        return
+
+    def handle(self):
+        try:
+            super().handle()
+        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError):
+            pass
+
+
     def _set_json_headers(self, status=200):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -204,44 +221,44 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
         engine_type = data.get("engine", "minimax")
         depth = int(data.get("depth", 3))
         simulations = int(data.get("simulations", 200))
-
         board = chess.Board(fen)
+
         if board.is_game_over():
             self._set_json_headers(400)
-            self.wfile.write(json.dumps({"error": "Game is already over"}).encode("utf-8"))
+            self.wfile.write(json.dumps({"error": "Game is over"}).encode("utf-8"))
             return
 
-        start_time = time.perf_counter()
-
-        if engine_type.lower() == "mcts":
-            ai_move = get_best_move_mcts(board, model=MODEL, device=DEVICE, num_simulations=simulations)
+        start_t = time.time()
+        if engine_type == "mcts":
+            best_move = get_best_move_mcts(board, MODEL, DEVICE, num_simulations=simulations)
         else:
-            ai_move = get_minimax_move(board, lookahead_depth=depth, model=MODEL, device=DEVICE)
+            best_move = get_minimax_move(board, depth, MODEL, DEVICE)
 
-        elapsed = time.perf_counter() - start_time
+        calc_time_ms = (time.time() - start_t) * 1000.0
 
-        if ai_move is None or ai_move not in board.legal_moves:
-            self._set_json_headers()
-            self.wfile.write(json.dumps({"error": "AI resigned", "uci": None}).encode("utf-8"))
+        if best_move is None:
+            self._set_json_headers(400)
+            self.wfile.write(json.dumps({"error": "No move found"}).encode("utf-8"))
             return
 
-        is_capture = board.is_capture(ai_move)
-        san_str = board.san(ai_move)
-        board.push(ai_move)
+        is_capture = board.is_capture(best_move)
+        san_str = board.san(best_move)
+        uci_str = best_move.uci()
+        board.push(best_move)
         GAME_BOARD.set_fen(board.fen())
 
         eval_score = get_position_evaluation(board)
 
         resp = {
-            "fen": board.fen(),
+            "uci": uci_str,
             "san": san_str,
-            "uci": ai_move.uci(),
+            "fen": board.fen(),
             "isCapture": is_capture,
             "isCheck": board.is_check(),
             "isGameOver": board.is_game_over(),
             "result": board.result() if board.is_game_over() else None,
             "eval": eval_score,
-            "elapsed": elapsed
+            "calcTimeMs": round(calc_time_ms, 1)
         }
 
         self._set_json_headers()
@@ -255,63 +272,142 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"eval": eval_score}).encode("utf-8"))
 
     def handle_undo(self, data):
-        uci_moves = data.get("moves", None)
-        board = chess.Board()
+        count = int(data.get("count", 1))
+        for _ in range(count):
+            if len(GAME_BOARD.move_stack) > 0:
+                GAME_BOARD.pop()
 
-        if uci_moves is not None:
-            for u in uci_moves:
-                try:
-                    m = chess.Move.from_uci(u)
-                    if m in board.legal_moves:
-                        board.push(m)
-                except Exception:
-                    pass
-        else:
-            steps = int(data.get("steps", 2))
-            for _ in range(steps):
-                if len(GAME_BOARD.move_stack) > 0:
-                    GAME_BOARD.pop()
-            board = GAME_BOARD.copy()
-
-        eval_score = get_position_evaluation(board)
-        last_m = None
-        if len(board.move_stack) > 0:
-            top_m = board.move_stack[-1]
-            last_m = {
-                "from": chess.square_name(top_m.from_square),
-                "to": chess.square_name(top_m.to_square)
-            }
-
-        resp = {
-            "fen": board.fen(),
-            "lastMove": last_m,
-            "eval": eval_score
-        }
+        eval_score = get_position_evaluation(GAME_BOARD)
         self._set_json_headers()
-        self.wfile.write(json.dumps(resp).encode("utf-8"))
+        self.wfile.write(json.dumps({
+            "fen": GAME_BOARD.fen(),
+            "eval": eval_score
+        }).encode("utf-8"))
 
 
-def run_server(port=8000, open_browser=True):
+def find_available_port(start_port=8000):
+    for port in range(start_port, start_port + 50):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", port)) != 0:
+                return port
+    return start_port
+
+
+def start_backend_server(port=8000):
+    global SERVER_PORT, SERVER_THREAD
+    if SERVER_THREAD is not None and SERVER_THREAD.is_alive():
+        return SERVER_PORT
+
     load_best_model()
+    SERVER_PORT = find_available_port(port)
+    server_address = ("0.0.0.0", SERVER_PORT)
+    httpd = HTTPServer(server_address, ChessAPIHandler)
+
+    def serve():
+        httpd.serve_forever()
+
+    SERVER_THREAD = threading.Thread(target=serve, daemon=True)
+    SERVER_THREAD.start()
+    return SERVER_PORT
+
+
+# Detect if running under Streamlit context
+try:
+    import streamlit as st
+    IS_STREAMLIT = True
+except ImportError:
+    IS_STREAMLIT = False
+
+if IS_STREAMLIT:
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        is_st_active = get_script_run_ctx() is not None
+    except Exception:
+        is_st_active = True
+else:
+    is_st_active = False
+
+if is_st_active:
+    # --- STREAMLIT HOSTING MODE ---
+    port = start_backend_server(8000)
+
+    st.set_page_config(
+        page_title="Chess-AI — Universal Neural Engine & Arena",
+        page_icon="♟️",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+
+    st.markdown("""
+        <style>
+            html, body, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"], [data-testid="stMain"], section.main {
+                overflow: hidden !important;
+                height: 100vh !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .block-container {
+                padding: 0rem !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+            }
+            header[data-testid="stHeader"], footer, #MainMenu {
+                display: none !important;
+            }
+            iframe {
+                border: none !important;
+                height: 100vh !important;
+                width: 100% !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    html_path = os.path.join(os.path.dirname(__file__), "web", "index.html")
+    css_path = os.path.join(os.path.dirname(__file__), "web", "style.css")
+    js_path = os.path.join(os.path.dirname(__file__), "web", "app.js")
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    with open(css_path, "r", encoding="utf-8") as f:
+        css_content = f.read()
+    with open(js_path, "r", encoding="utf-8") as f:
+        js_content = f.read()
+
+    # Embed CSS inline and point API requests to local backend server port
+    full_html = html_content.replace(
+        '<link rel="stylesheet" href="/static/style.css">',
+        f'<style>{css_content}</style>'
+    ).replace(
+        '<script src="/static/app.js"></script>',
+        f'<script>{js_content.replace("fetch(\"/", f"fetch(\"http://localhost:{port}/")}</script>'
+    )
+
+    if hasattr(st, "iframe"):
+        st.iframe(f"http://localhost:{port}", height=760)
+    else:
+        st.components.v1.iframe(f"http://localhost:{port}", height=760)
+
+
+
+
+elif __name__ == "__main__":
+    # --- STANDALONE PYTHON MODE ---
+    load_best_model()
+    port = find_available_port(8000)
     server_address = ("", port)
     httpd = HTTPServer(server_address, ChessAPIHandler)
     url = f"http://localhost:{port}"
 
     print(f"\n==============================================================")
-    print(f"  ♟️  CHESS-AI WEB ARENA RUNNING AT: {url}")
-    print(f"  Backend: {MODEL_TYPE.upper()} ({MODEL_NAME}) on {DEVICE}")
+    print(f"⚡ Chess-AI Web Arena running on: {url}")
+    print(f"🧠 Engine Device: {DEVICE}")
+    print(f"📦 Active Model:  {MODEL_NAME} ({MODEL_TYPE.upper()})")
     print(f"==============================================================\n")
 
-    if open_browser:
-        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
-
+    threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\n[*] Server shutting down...")
+        print("\nShutting down Chess-AI Server...")
         httpd.server_close()
-
-
-if __name__ == "__main__":
-    port_arg = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 8000
-    run_server(port=port_arg, open_browser=True)
