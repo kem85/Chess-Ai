@@ -383,17 +383,17 @@ if is_st_active:
 
     import re
     full_html = re.sub(
-        r'<link\s+rel="stylesheet"\s+href="/static/style\.css"\s*/?>',
+        r'<link\s+rel="stylesheet"\s+href="(?:/static/)?style\.css"\s*/?>',
         lambda _: f'<style>\n{css_content}\n</style>',
         html_content
     )
     full_html = re.sub(
-        r'<script\s+src="/static/chess\.min\.js"\s*></script>',
+        r'<script\s+src="(?:/static/)?chess\.min\.js"\s*></script>',
         lambda _: f'<script>\n{chess_js_content}\n</script>',
         full_html
     )
     full_html = re.sub(
-        r'<script\s+src="/static/app\.js"\s*></script>',
+        r'<script\s+src="(?:/static/)?app\.js"\s*></script>',
         lambda _: f'<script>\n{js_content_updated}\n</script>',
         full_html
     )

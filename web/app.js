@@ -644,30 +644,23 @@ class ChessApp {
     let data = null;
     const startTime = performance.now();
 
-    // 1. Primary: Dual-Head PyTorch ResNet Model
-    const isLocal =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1");
-
-    if (isLocal) {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fen: this.currentFen,
-            engine: engineType,
-            depth: depth,
-            simulations: sims,
-          }),
-        });
-        if (res.ok) {
-          data = await res.json();
-        }
-      } catch (err) {
-        console.warn("PyTorch local endpoint unreachable:", err);
+    // 1. Primary: Dual-Head PyTorch ResNet Model (models/chess_model_v3.pth)
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fen: this.currentFen,
+          engine: engineType,
+          depth: depth,
+          simulations: sims,
+        }),
+      });
+      if (res.ok) {
+        data = await res.json();
       }
+    } catch (err) {
+      console.warn("PyTorch local endpoint unreachable:", err);
     }
 
     if (data && data.uci) {
