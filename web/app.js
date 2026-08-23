@@ -117,65 +117,6 @@ class ChessSoundFx {
 
 const soundFx = new ChessSoundFx();
 
-const JS_PIECE_VALS = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
-
-function evalGameJS(game) {
-  let score = 0;
-  const board = game.board();
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const p = board[r][c];
-      if (p) {
-        const val = JS_PIECE_VALS[p.type] || 0;
-        score += p.color === "w" ? val : -val;
-      }
-    }
-  }
-  return score;
-}
-
-function minimaxJS(game, depth, alpha, beta, isMax) {
-  if (depth === 0 || game.game_over()) {
-    return { score: evalGameJS(game), move: null };
-  }
-  const moves = game.moves({ verbose: true });
-  if (moves.length === 0) {
-    return { score: evalGameJS(game), move: null };
-  }
-
-  let bestMove = moves[Math.floor(Math.random() * moves.length)];
-
-  if (isMax) {
-    let maxEval = -Infinity;
-    for (let m of moves) {
-      game.move(m);
-      const ev = minimaxJS(game, depth - 1, alpha, beta, false).score;
-      game.undo();
-      if (ev > maxEval) {
-        maxEval = ev;
-        bestMove = m;
-      }
-      alpha = Math.max(alpha, ev);
-      if (beta <= alpha) break;
-    }
-    return { score: maxEval, move: bestMove };
-  } else {
-    let minEval = Infinity;
-    for (let m of moves) {
-      game.move(m);
-      const ev = minimaxJS(game, depth - 1, alpha, beta, true).score;
-      game.undo();
-      if (ev < minEval) {
-        minEval = ev;
-        bestMove = m;
-      }
-      beta = Math.min(beta, ev);
-      if (beta <= alpha) break;
-    }
-    return { score: minEval, move: bestMove };
-  }
-}
-
 // Game State Management
 class ChessApp {
   constructor() {
@@ -198,6 +139,7 @@ class ChessApp {
     this.pendingPromotion = null;
 
     this.initUI();
+    this.initStreamlitListener();
     this.fetchSystemStatus();
     this.setPlayerMode("w");
   }
@@ -617,78 +559,24 @@ class ChessApp {
     }
   }
 
-  async triggerAiMove() {
-    this.isThinking = true;
-    document.getElementById("statStatus").textContent = "AI Calculating...";
-
-    const engineType = document.getElementById("engineSelect").value;
-    const depth = parseInt(document.getElementById("depthSlider").value);
-    const sims = parseInt(document.getElementById("simsSlider").value);
-
-    let data = null;
-    const startTime = performance.now();
-
-    // 1. Try PyTorch / ONNX backend server
-    try {
-      const res = await fetch("/api/move", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fen: this.currentFen,
-          engine: engineType,
-          depth: depth,
-          simulations: sims,
-        }),
-      });
-      if (res.ok) {
-        data = await res.json();
-      }
-    } catch (err) {
-      // Backend HTTP unreachable (e.g. static Streamlit iframe)
-    }
-
-    // 2. Client-side fallback solver if server is unreachable
-    if (!data || !data.uci) {
-      if (typeof Chess !== "undefined") {
-        try {
-          const game = new Chess(this.currentFen);
-          if (!game.game_over()) {
-            const isWhite = game.turn() === "w";
-            const res = minimaxJS(game, depth, -Infinity, Infinity, isWhite);
-            if (res.move) {
-              const moveObj = game.move(res.move);
-              const calcTimeMs = performance.now() - startTime;
-              let gameRes = null;
-              if (game.game_over()) {
-                gameRes = "1/2-1/2";
-                if (game.in_checkmate()) gameRes = game.turn() === "w" ? "0-1" : "1-0";
-              }
-              data = {
-                uci: `${res.move.from}${res.move.to}${res.move.promotion || ""}`,
-                san: moveObj.san,
-                fen: game.fen(),
-                isCapture: !!moveObj.captured,
-                isCheck: game.in_check(),
-                isGameOver: game.game_over(),
-                result: gameRes,
-                eval: Math.max(-1.0, Math.min(1.0, res.score / 600.0)),
-                calcTimeMs: Math.round(calcTimeMs),
-              };
-            }
-          }
-        } catch (e) {
-          console.warn("Client AI search error:", e);
+  initStreamlitListener() {
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "streamlit:render") {
+        const args = event.data.args;
+        if (
+          args &&
+          args.ai_result &&
+          args.ai_result.uci &&
+          args.ai_result.fen !== this.currentFen
+        ) {
+          this.applyAiMoveData(args.ai_result);
         }
       }
-    }
+    });
+  }
 
-    this.isThinking = false;
-    document.getElementById("statStatus").textContent = "Live Match";
-
-    if (!data || !data.uci) {
-      return;
-    }
-
+  applyAiMoveData(data) {
+    if (!data || !data.uci) return;
     const fromSq = data.uci.slice(0, 2);
     const toSq = data.uci.slice(2, 4);
 
@@ -715,10 +603,71 @@ class ChessApp {
     document.getElementById("statEval").textContent =
       `${evalVal > 0 ? "+" : ""}${evalVal.toFixed(2)}`;
 
+    this.isThinking = false;
+    document.getElementById("statStatus").textContent = "Live Match";
+
     if (data.isGameOver) {
       this.handleGameOver(data.result);
     } else if (this.playerColor === "self") {
       setTimeout(() => this.triggerAiMove(), 400);
+    }
+  }
+
+  async triggerAiMove() {
+    this.isThinking = true;
+    document.getElementById("statStatus").textContent = "AI Calculating...";
+
+    const engineType = document.getElementById("engineSelect").value;
+    const depth = parseInt(document.getElementById("depthSlider").value);
+    const sims = parseInt(document.getElementById("simsSlider").value);
+
+    // Send Streamlit Component message if embedded in Streamlit
+    if (window.parent && window.parent !== window) {
+      try {
+        window.parent.postMessage(
+          {
+            isStreamlitMessage: true,
+            type: "streamlit:setComponentValue",
+            value: {
+              action: "ai_move",
+              fen: this.currentFen,
+              engine: engineType,
+              depth: depth,
+              simulations: sims,
+            },
+          },
+          "*"
+        );
+      } catch (e) {}
+    }
+
+    let data = null;
+    const startTime = performance.now();
+
+    // 1. Primary: Dual-Head PyTorch ResNet Model (models/chess_model_v3.pth)
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fen: this.currentFen,
+          engine: engineType,
+          depth: depth,
+          simulations: sims,
+        }),
+      });
+      if (res.ok) {
+        data = await res.json();
+      }
+    } catch (err) {
+      console.warn("PyTorch server endpoint unreachable:", err);
+    }
+
+    if (data && data.uci) {
+      this.applyAiMoveData(data);
+    } else {
+      this.isThinking = false;
+      document.getElementById("statStatus").textContent = "Live Match";
     }
   }
 
