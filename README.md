@@ -8,6 +8,7 @@
 
 <br/>
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chess-ai-ml.streamlit.app)
 [![CI](https://img.shields.io/badge/CI-Passing-2ea44f.svg?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/kem85/Chess-Ai/actions)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
@@ -16,9 +17,16 @@
 
 <br/>
 
-[🚀 Quick Start](#-quick-start) • [✨ Key Features](#-key-features) • [🧠 Neural Architecture](#-neural-architecture) • [🌲 Search Algorithms](#-search-algorithms-minimax-vs-mcts) • [⚡ Benchmarking & CLI](#-cli--benchmarking)
+[🎮 Live Demo](https://chess-ai-ml.streamlit.app) • [🚀 Quick Start](#-quick-start) • [✨ Key Features](#-key-features) • [🧠 Neural Architecture](#-neural-architecture) • [🌲 Search Algorithms](#-search-algorithms-minimax-vs-mcts) • [⚡ Benchmarking & CLI](#-cli--benchmarking)
 
 </div>
+
+---
+
+## 🌐 Live Web Demo
+
+Play immediately in your browser without installing anything:  
+👉 **[chess-ai-ml.streamlit.app](https://chess-ai-ml.streamlit.app)** ♟️
 
 ---
 
