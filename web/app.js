@@ -197,7 +197,7 @@ class ChessApp {
     if (typeof window !== "undefined" && window.location) {
       const h = window.location.hostname;
       const p = window.location.port;
-      if (h === "localhost" || h === "127.0.0.1" || p === "8501" || h === "") {
+      if (h === "localhost" || h === "127.0.0.1" || p === "8501") {
         return `http://127.0.0.1:8000${path}`;
       }
     }
