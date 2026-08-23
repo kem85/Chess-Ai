@@ -104,11 +104,11 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
 
         if path in ["/", "/index.html"]:
             self.serve_static_file("web/index.html", "text/html")
-        elif path == "/static/style.css":
+        elif path in ["/static/style.css", "/style.css"]:
             self.serve_static_file("web/style.css", "text/css")
-        elif path == "/static/chess.min.js":
+        elif path in ["/static/chess.min.js", "/chess.min.js"]:
             self.serve_static_file("web/chess.min.js", "application/javascript")
-        elif path == "/static/app.js":
+        elif path in ["/static/app.js", "/app.js"]:
             self.serve_static_file("web/app.js", "application/javascript")
         elif path == "/api/status":
             self._set_json_headers()
@@ -334,7 +334,7 @@ else:
 
 if is_st_active:
     # --- STREAMLIT HOSTING MODE ---
-    port = start_backend_server(8000)
+    load_best_model()
 
     st.set_page_config(
         page_title="Chess-AI — Universal Neural Engine & Arena",
@@ -347,7 +347,6 @@ if is_st_active:
         <style>
             html, body, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"], [data-testid="stMain"], section.main {
                 overflow: hidden !important;
-                height: 100vh !important;
                 padding: 0 !important;
                 margin: 0 !important;
             }
@@ -355,56 +354,75 @@ if is_st_active:
                 padding: 0rem !important;
                 margin: 0 !important;
                 max-width: 100% !important;
-                height: 100vh !important;
             }
             header[data-testid="stHeader"], footer, #MainMenu {
                 display: none !important;
             }
             iframe {
                 border: none !important;
-                height: 100vh !important;
                 width: 100% !important;
+                height: 920px !important;
             }
         </style>
     """, unsafe_allow_html=True)
 
-    html_path = os.path.join(os.path.dirname(__file__), "web", "index.html")
-    css_path = os.path.join(os.path.dirname(__file__), "web", "style.css")
-    chess_js_path = os.path.join(os.path.dirname(__file__), "web", "chess.min.js")
-    js_path = os.path.join(os.path.dirname(__file__), "web", "app.js")
+    import streamlit.components.v1 as components
+    web_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "web"))
+    chess_arena_component = components.declare_component("chess_arena", path=web_dir)
 
-    with open(html_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
-    with open(css_path, "r", encoding="utf-8") as f:
-        css_content = f.read()
-    with open(chess_js_path, "r", encoding="utf-8") as f:
-        chess_js_content = f.read()
-    with open(js_path, "r", encoding="utf-8") as f:
-        js_content = f.read()
+    if "ai_result" not in st.session_state:
+        st.session_state["ai_result"] = None
+    if "last_action_id" not in st.session_state:
+        st.session_state["last_action_id"] = None
 
-    js_content_updated = js_content
-
-    import re
-    full_html = re.sub(
-        r'<link\s+rel="stylesheet"\s+href="(?:/static/)?style\.css"\s*/?>',
-        lambda _: f'<style>\n{css_content}\n</style>',
-        html_content
-    )
-    full_html = re.sub(
-        r'<script\s+src="(?:/static/)?chess\.min\.js"\s*></script>',
-        lambda _: f'<script>\n{chess_js_content}\n</script>',
-        full_html
-    )
-    full_html = re.sub(
-        r'<script\s+src="(?:/static/)?app\.js"\s*></script>',
-        lambda _: f'<script>\n{js_content_updated}\n</script>',
-        full_html
+    component_value = chess_arena_component(
+        ai_result=st.session_state["ai_result"],
+        device=str(DEVICE),
+        model=MODEL_NAME,
+        model_type=MODEL_TYPE,
+        default=None,
+        key="chess_arena_comp"
     )
 
-    if hasattr(st, "iframe"):
-        st.iframe(full_html, height=850)
-    else:
-        st.components.v1.html(full_html, height=850, scrolling=True)
+    if component_value and isinstance(component_value, dict):
+        action = component_value.get("action")
+        action_id = component_value.get("actionId")
+        if action == "ai_move" and action_id != st.session_state["last_action_id"]:
+            st.session_state["last_action_id"] = action_id
+            fen = component_value.get("fen", GAME_BOARD.fen())
+            engine_type = component_value.get("engine", "minimax")
+            depth = int(component_value.get("depth", 3))
+            simulations = int(component_value.get("simulations", 200))
+
+            board = chess.Board(fen)
+            if not board.is_game_over():
+                start_t = time.time()
+                if engine_type == "mcts":
+                    best_move = get_best_move_mcts(board, MODEL, DEVICE, num_simulations=simulations)
+                else:
+                    best_move = get_minimax_move(board, depth, MODEL, DEVICE)
+                calc_time_ms = (time.time() - start_t) * 1000.0
+
+                if best_move is not None:
+                    is_capture = board.is_capture(best_move)
+                    san_str = board.san(best_move)
+                    uci_str = best_move.uci()
+                    board.push(best_move)
+                    eval_score = get_position_evaluation(board)
+
+                    st.session_state["ai_result"] = {
+                        "actionId": action_id,
+                        "uci": uci_str,
+                        "san": san_str,
+                        "fen": board.fen(),
+                        "isCapture": is_capture,
+                        "isCheck": board.is_check(),
+                        "isGameOver": board.is_game_over(),
+                        "result": board.result() if board.is_game_over() else None,
+                        "eval": eval_score,
+                        "calcTimeMs": round(calc_time_ms, 1)
+                    }
+                    st.rerun()
 
 
 elif __name__ == "__main__":

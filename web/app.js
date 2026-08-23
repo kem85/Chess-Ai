@@ -137,6 +137,7 @@ class ChessApp {
 
     this.moveHistory = [];
     this.pendingPromotion = null;
+    this.currentActionId = null;
 
     this.initUI();
     this.initStreamlitListener();
@@ -259,8 +260,11 @@ class ChessApp {
     this.legalMoves = [];
     this.lastMove = null;
     this.isThinking = false;
+    this.currentActionId = null;
     this.updateMoveHistoryTable();
     this.updateEvalBar(0.0);
+    const statusEl = document.getElementById("statStatus");
+    if (statusEl) statusEl.textContent = "Live Match";
     this.renderBoard();
 
     // If human is Black or self-play, trigger AI's first move
@@ -574,13 +578,33 @@ class ChessApp {
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "streamlit:render") {
         const args = event.data.args;
-        if (
-          args &&
-          args.ai_result &&
-          args.ai_result.uci &&
-          args.ai_result.fen !== this.currentFen
-        ) {
-          this.applyAiMoveData(args.ai_result);
+        if (args) {
+          if (args.device) {
+            const devEl = document.getElementById("deviceBadge");
+            if (devEl) devEl.textContent = `${args.device.toUpperCase()}: Active`;
+          }
+          if (args.model) {
+            const modEl = document.getElementById("modelBadge");
+            if (modEl) modEl.textContent = args.model;
+          }
+          if (
+            args.ai_result &&
+            args.ai_result.uci &&
+            (!this.currentActionId || args.ai_result.actionId === this.currentActionId)
+          ) {
+            this.currentActionId = null;
+            this.applyAiMoveData(args.ai_result);
+          }
+        }
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(
+            {
+              isStreamlitMessage: true,
+              type: "streamlit:setFrameHeight",
+              height: Math.max(document.documentElement.scrollHeight, 900),
+            },
+            "*"
+          );
         }
       }
     });
@@ -625,15 +649,19 @@ class ChessApp {
   }
 
   async triggerAiMove() {
+    if (this.isThinking) return;
     this.isThinking = true;
     document.getElementById("statStatus").textContent = "AI Calculating...";
 
     const engineType = document.getElementById("engineSelect").value;
     const depth = parseInt(document.getElementById("depthSlider").value);
     const sims = parseInt(document.getElementById("simsSlider").value);
+    const actionId = `move_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    this.currentActionId = actionId;
 
-    // Send Streamlit Component message if embedded in Streamlit
-    if (window.parent && window.parent !== window) {
+    const inIframe = window.parent && window.parent !== window;
+
+    if (inIframe) {
       try {
         window.parent.postMessage(
           {
@@ -641,6 +669,7 @@ class ChessApp {
             type: "streamlit:setComponentValue",
             value: {
               action: "ai_move",
+              actionId: actionId,
               fen: this.currentFen,
               engine: engineType,
               depth: depth,
@@ -649,50 +678,38 @@ class ChessApp {
           },
           "*"
         );
-      } catch (e) {}
-    }
-
-    let data = null;
-    const startTime = performance.now();
-
-    // 1. Primary: Dual-Head PyTorch ResNet Model (models/chess_model_v3.pth)
-    if (typeof Streamlit !== "undefined" && Streamlit.setComponentValue) {
-      Streamlit.setComponentValue({
-        action: "ai_move",
-        fen: this.currentFen,
-        engine: engineType,
-        depth: depth,
-        simulations: sims,
-      });
-    }
-
-    try {
-      const res = await fetch(this.getApiEndpoint("/api/move"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fen: this.currentFen,
-          engine: engineType,
-          depth: depth,
-          simulations: sims,
-        }),
-      });
-      if (res.ok) {
-        data = await res.json();
+      } catch (e) {
+        console.warn("Streamlit postMessage error:", e);
       }
-    } catch (err) {
-      console.warn("PyTorch endpoint unreachable:", err);
-    }
-
-    if (data && data.uci) {
-      this.applyAiMoveData(data);
     } else {
+      // Standalone mode: HTTP fetch
+      try {
+        const res = await fetch(this.getApiEndpoint("/api/move"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fen: this.currentFen,
+            engine: engineType,
+            depth: depth,
+            simulations: sims,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.uci) {
+            this.applyAiMoveData(data);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("PyTorch endpoint unreachable:", err);
+      }
       this.isThinking = false;
       document.getElementById("statStatus").textContent = "Live Match";
     }
   }
 
-  async undoMove() {
+  undoMove() {
     if (this.moveHistory.length === 0 || this.isThinking) return;
 
     const steps =
@@ -703,24 +720,24 @@ class ChessApp {
       }
     }
 
-    const remainingUcis = this.moveHistory.map((m) => m.uci);
-
-    try {
-      const res = await fetch(this.getApiEndpoint("/api/undo"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ moves: remainingUcis }),
-      });
-      const data = await res.json();
-      this.currentFen = data.fen;
+    if (typeof Chess !== "undefined") {
+      const game = new Chess();
+      for (const m of this.moveHistory) {
+        game.move(m.san);
+      }
+      this.currentFen = game.fen();
       this.selectedSquare = null;
       this.legalMoves = [];
-      this.lastMove = data.lastMove || null;
+      this.lastMove =
+        this.moveHistory.length > 0
+          ? {
+              from: this.moveHistory[this.moveHistory.length - 1].uci.slice(0, 2),
+              to: this.moveHistory[this.moveHistory.length - 1].uci.slice(2, 4),
+            }
+          : null;
       this.updateMoveHistoryTable();
-      this.updateEvalBar(data.eval);
+      this.updateEvalBar(0.0);
       this.renderBoard();
-    } catch (err) {
-      console.error("Undo error:", err);
     }
   }
 
@@ -794,4 +811,22 @@ class ChessApp {
 
 document.addEventListener("DOMContentLoaded", () => {
   window.chessApp = new ChessApp();
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(
+      {
+        isStreamlitMessage: true,
+        type: "streamlit:componentReady",
+        apiVersion: 1,
+      },
+      "*"
+    );
+    window.parent.postMessage(
+      {
+        isStreamlitMessage: true,
+        type: "streamlit:setFrameHeight",
+        height: Math.max(document.documentElement.scrollHeight, 900),
+      },
+      "*"
+    );
+  }
 });
