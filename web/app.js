@@ -193,9 +193,20 @@ class ChessApp {
       .addEventListener("click", () => this.exportPGN());
   }
 
+  getApiEndpoint(path) {
+    if (typeof window !== "undefined" && window.location) {
+      const h = window.location.hostname;
+      const p = window.location.port;
+      if (h === "localhost" || h === "127.0.0.1" || p === "8501" || h === "") {
+        return `http://127.0.0.1:8000${path}`;
+      }
+    }
+    return path;
+  }
+
   async fetchSystemStatus() {
     try {
-      const res = await fetch("/api/status");
+      const res = await fetch(this.getApiEndpoint("/api/status"));
       const data = await res.json();
       if (data.device) {
         document.getElementById("deviceBadge").textContent =
@@ -656,7 +667,7 @@ class ChessApp {
     }
 
     try {
-      const res = await fetch("/api/move", {
+      const res = await fetch(this.getApiEndpoint("/api/move"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -695,7 +706,7 @@ class ChessApp {
     const remainingUcis = this.moveHistory.map((m) => m.uci);
 
     try {
-      const res = await fetch("/api/undo", {
+      const res = await fetch(this.getApiEndpoint("/api/undo"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ moves: remainingUcis }),
