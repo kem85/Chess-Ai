@@ -13,7 +13,6 @@ import chess
 from src.model import ChessResNet
 from src.search import get_best_move as get_best_move_minimax, get_model_evaluation
 from src.mcts import get_best_move_mcts
-from src.onnx_engine import ONNXChessModel, get_onnx_evaluation
 from src.ui import render_board, BOLD, RESET, CYAN, YELLOW, GREEN, RED, DIM
 
 # Fix Windows console encoding for UTF-8 box-drawing & unicode pieces
@@ -28,31 +27,29 @@ def resolve_default_model() -> str:
     """Finds the best available pre-trained checkpoint in the workspace."""
     candidates = [
         "models/chess_model_v3.pth",
-        "models/chess_resnet_int8.onnx",
         "models/chess_model.pth",
         "chess_model_v3.pth",
-        "chess_resnet_int8.onnx",
         "chess_model.pth"
     ]
     for c in candidates:
-        if os.path.exists(c):
+        if os.path.exists(c) and os.path.getsize(c) > 1_000_000:
             return c
     return "models/chess_model_v3.pth"
 
 
 def load_model(model_path: str, device: torch.device) -> Tuple[torch.nn.Module, str]:
-    """Loads either an ONNX model or PyTorch ResNet model."""
-    if model_path.endswith(".onnx") and os.path.exists(model_path):
-        print(f"[*] Loading ONNX model from: {model_path}")
-        return ONNXChessModel(model_path), "onnx"
-
+    """Loads PyTorch ResNet model from checkpoint."""
     model = ChessResNet(num_blocks=10, hidden_channels=128).to(device)
-    if os.path.exists(model_path):
-        print(f"[*] Loading PyTorch weights from: {model_path}")
-        state_dict = torch.load(model_path, map_location=device, weights_only=True)
-        model.load_state_dict(state_dict)
+    if os.path.exists(model_path) and os.path.getsize(model_path) > 1_000_000:
+        try:
+            print(f"[*] Loading PyTorch weights from: {model_path}")
+            state_dict = torch.load(model_path, map_location=device, weights_only=True)
+            model.load_state_dict(state_dict)
+            print(f"[✓] Model loaded successfully.")
+        except Exception as err:
+            print(f"[!] Failed to load {model_path}: {err}")
     else:
-        print(f"[!] Warning: Model checkpoint '{model_path}' not found.")
+        print(f"[!] Warning: Model checkpoint '{model_path}' not found or invalid size.")
         print("[!] Running with randomly initialized weights for demonstration.\n")
     model.eval()
     return model, "pytorch"
@@ -121,10 +118,7 @@ def play_game(
             last_move = ai_move
             move_history.append(san_str)
 
-            if model_type == "onnx":
-                _, eval_score = get_onnx_evaluation(model, board)
-            else:
-                _, eval_score = get_model_evaluation(model, board, device)
+            _, eval_score = get_model_evaluation(model, board, device)
 
             print(f"🤖 {BOLD}AI played:{RESET} {GREEN}{san_str}{RESET} {DIM}(uci: {ai_move.uci()}, {elapsed:.2f}s){RESET}\n")
 

@@ -21,7 +21,6 @@ import torch
 from src.model import ChessResNet
 from src.search import get_best_move as get_minimax_move, get_model_evaluation
 from src.mcts import get_best_move_mcts
-from src.onnx_engine import ONNXChessModel, get_onnx_evaluation
 
 # Global state
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -33,45 +32,66 @@ SERVER_PORT = 8000
 SERVER_THREAD = None
 
 
+def ensure_model_file(target_path="models/chess_model_v3.pth") -> str:
+    """Ensures full PyTorch weights are present, auto-downloading from GitHub LFS if needed."""
+    if os.path.exists(target_path) and os.path.getsize(target_path) > 1_000_000:
+        return target_path
+
+    url = "https://media.githubusercontent.com/media/kem85/Chess-Ai/main/models/chess_model_v3.pth"
+    print(f"[*] Fetching full PyTorch ResNet weights from GitHub LFS ({url})...")
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    try:
+        import urllib.request
+        opener = urllib.request.build_opener()
+        opener.addheaders = [("User-Agent", "Mozilla/5.0")]
+        urllib.request.install_opener(opener)
+        urllib.request.urlretrieve(url, target_path)
+        if os.path.exists(target_path) and os.path.getsize(target_path) > 1_000_000:
+            print(f"[✓] Full weights downloaded successfully ({os.path.getsize(target_path)} bytes).")
+    except Exception as err:
+        print(f"[!] Could not download checkpoint: {err}")
+    return target_path
+
+
 def load_best_model():
-    """Loads the pre-trained weights from models directory."""
+    """Loads the pre-trained PyTorch ResNet weights from models directory."""
     global MODEL, MODEL_TYPE, MODEL_NAME
     if MODEL is not None:
         return
+
+    ensure_model_file("models/chess_model_v3.pth")
+
     candidates = [
-        ("models/chess_model_v3.pth", "pytorch"),
-        ("models/chess_resnet_int8.onnx", "onnx"),
-        ("models/chess_model.pth", "pytorch"),
-        ("chess_model_v3.pth", "pytorch"),
-        ("chess_resnet_int8.onnx", "onnx"),
+        "models/chess_model_v3.pth",
+        "models/chess_model.pth",
+        "chess_model_v3.pth",
+        "chess_model.pth",
     ]
 
-    for path, mtype in candidates:
-        if os.path.exists(path):
-            MODEL_NAME = os.path.basename(path)
-            MODEL_TYPE = mtype
-            print(f"[*] Initializing {mtype.upper()} model: {path} on {DEVICE}...")
-            if mtype == "onnx":
-                MODEL = ONNXChessModel(path)
-            else:
+    for path in candidates:
+        if os.path.exists(path) and os.path.getsize(path) > 1_000_000:
+            try:
+                MODEL_NAME = os.path.basename(path)
+                MODEL_TYPE = "pytorch"
+                print(f"[*] Initializing PyTorch ResNet model: {path} on {DEVICE}...")
                 MODEL = ChessResNet(num_blocks=10, hidden_channels=128).to(DEVICE)
                 state_dict = torch.load(path, map_location=DEVICE, weights_only=True)
                 MODEL.load_state_dict(state_dict)
                 MODEL.eval()
-            return
+                print(f"[✓] Successfully loaded weights from {path}")
+                return
+            except Exception as err:
+                print(f"[!] Error loading {path}: {err}")
 
-    # Fallback to randomly initialized
-    print("[!] No checkpoint found. Initializing demonstration weights...")
+    # Fallback to randomly initialized ResNet if no valid weights found
+    print("[!] No valid checkpoint (>1MB) found. Initializing demonstration weights...")
     MODEL = ChessResNet(num_blocks=10, hidden_channels=128).to(DEVICE)
     MODEL.eval()
 
 
 def get_position_evaluation(board: chess.Board) -> float:
     """Evaluates position and returns score from White's perspective."""
-    if MODEL_TYPE == "onnx":
-        _, eval_score = get_onnx_evaluation(MODEL, board)
-    else:
-        _, eval_score = get_model_evaluation(MODEL, board, DEVICE)
+    _, eval_score = get_model_evaluation(MODEL, board, DEVICE)
     return float(eval_score)
 
 

@@ -138,6 +138,7 @@ class ChessApp {
     this.moveHistory = [];
     this.pendingPromotion = null;
     this.currentActionId = null;
+    this.lastAppliedActionId = null;
 
     this.initUI();
     this.initStreamlitListener();
@@ -261,6 +262,7 @@ class ChessApp {
     this.lastMove = null;
     this.isThinking = false;
     this.currentActionId = null;
+    this.lastAppliedActionId = null;
     this.updateMoveHistoryTable();
     this.updateEvalBar(0.0);
     const statusEl = document.getElementById("statStatus");
@@ -590,8 +592,11 @@ class ChessApp {
           if (
             args.ai_result &&
             args.ai_result.uci &&
-            (!this.currentActionId || args.ai_result.actionId === this.currentActionId)
+            args.ai_result.actionId &&
+            args.ai_result.actionId !== this.lastAppliedActionId &&
+            this.currentActionId === args.ai_result.actionId
           ) {
+            this.lastAppliedActionId = args.ai_result.actionId;
             this.currentActionId = null;
             this.applyAiMoveData(args.ai_result);
           }
