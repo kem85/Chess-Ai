@@ -664,31 +664,38 @@ class ChessApp {
       }
     });
 
-    // Handle responsive window resize
-    window.addEventListener("resize", () => {
-      this.notifyStreamlitHeight();
-    });
+    // Handle responsive window resize (debounced — don't fire continuously)
+    let _resizeTimer = null;
+    const debouncedHeight = () => {
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(() => this.notifyStreamlitHeight(), 80);
+    };
+    window.addEventListener("resize", debouncedHeight);
 
     if (typeof ResizeObserver !== "undefined") {
-      const resizeObserver = new ResizeObserver(() => {
-        this.notifyStreamlitHeight();
-      });
-      resizeObserver.observe(document.body);
+      // Observe the fixed inner app container, NOT document.body.
+      // Observing body creates a feedback loop: iframe grows → body scrollHeight
+      // grows → postMessage fires → iframe grows again → ∞.
+      const appRoot = document.getElementById("app") || document.body;
+      const resizeObserver = new ResizeObserver(debouncedHeight);
+      resizeObserver.observe(appRoot);
     }
   }
 
   notifyStreamlitHeight() {
     if (window.parent && window.parent !== window) {
-      const docHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight,
-        700
-      );
+      // Use the inner app container's offsetHeight (layout height, ignoring
+      // scroll overflow) so the reported value is stable and doesn't cause
+      // a grow-forever feedback loop with the Streamlit iframe resizer.
+      const appRoot = document.getElementById("app");
+      const docHeight = appRoot
+        ? appRoot.offsetHeight
+        : Math.max(document.documentElement.clientHeight, 700);
       window.parent.postMessage(
         {
           isStreamlitMessage: true,
           type: "streamlit:setFrameHeight",
-          height: docHeight + 24,
+          height: docHeight,
         },
         "*"
       );
