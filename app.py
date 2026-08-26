@@ -12,6 +12,13 @@ import time
 import socket
 import webbrowser
 import threading
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 
@@ -366,9 +373,13 @@ if is_st_active:
     st.markdown("""
         <style>
             html, body, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"], [data-testid="stMain"], section.main {
-                overflow: hidden !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
                 padding: 0 !important;
                 margin: 0 !important;
+                height: auto !important;
+                min-height: 100vh !important;
+                background-color: #07090e !important;
             }
             .block-container {
                 padding: 0rem !important;
@@ -381,7 +392,7 @@ if is_st_active:
             iframe {
                 border: none !important;
                 width: 100% !important;
-                height: 920px !important;
+                min-height: 100vh !important;
             }
         </style>
     """, unsafe_allow_html=True)

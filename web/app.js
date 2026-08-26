@@ -601,18 +601,39 @@ class ChessApp {
             this.applyAiMoveData(args.ai_result);
           }
         }
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage(
-            {
-              isStreamlitMessage: true,
-              type: "streamlit:setFrameHeight",
-              height: Math.max(document.documentElement.scrollHeight, 900),
-            },
-            "*"
-          );
-        }
+        this.notifyStreamlitHeight();
       }
     });
+
+    // Handle responsive window resize
+    window.addEventListener("resize", () => {
+      this.notifyStreamlitHeight();
+    });
+
+    if (typeof ResizeObserver !== "undefined") {
+      const resizeObserver = new ResizeObserver(() => {
+        this.notifyStreamlitHeight();
+      });
+      resizeObserver.observe(document.body);
+    }
+  }
+
+  notifyStreamlitHeight() {
+    if (window.parent && window.parent !== window) {
+      const docHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        700
+      );
+      window.parent.postMessage(
+        {
+          isStreamlitMessage: true,
+          type: "streamlit:setFrameHeight",
+          height: docHeight + 24,
+        },
+        "*"
+      );
+    }
   }
 
   applyAiMoveData(data) {
@@ -750,16 +771,25 @@ class ChessApp {
     if (score === undefined || isNaN(score)) score = 0.0;
     const clamped = Math.max(-1.0, Math.min(1.0, score));
     const percent = ((clamped + 1.0) / 2.0) * 100;
-    this.evalFill.style.height = `${percent}%`;
+    
+    // Set custom CSS variable and inline style for multi-directional support
+    document.documentElement.style.setProperty("--eval-pct", `${percent}%`);
+    if (this.evalFill) {
+      this.evalFill.style.setProperty("--eval-pct", `${percent}%`);
+      this.evalFill.style.height = `${percent}%`;
+    }
+
     const sign = score > 0 ? "+" : "";
     const scoreStr = `${sign}${score.toFixed(1)}`;
-    this.evalText.textContent = `${sign}${score.toFixed(2)}`;
+    if (this.evalText) {
+      this.evalText.textContent = `${sign}${score.toFixed(2)}`;
+    }
     if (score >= 0) {
-      this.evalTop.textContent = scoreStr;
-      this.evalBottom.textContent = "";
+      if (this.evalTop) this.evalTop.textContent = scoreStr;
+      if (this.evalBottom) this.evalBottom.textContent = "";
     } else {
-      this.evalTop.textContent = "";
-      this.evalBottom.textContent = scoreStr;
+      if (this.evalTop) this.evalTop.textContent = "";
+      if (this.evalBottom) this.evalBottom.textContent = scoreStr;
     }
   }
 
@@ -787,13 +817,17 @@ class ChessApp {
       row.appendChild(blackCell);
       tbody.appendChild(row);
     }
-    tbody.parentElement.parentElement.scrollTop =
-      tbody.parentElement.parentElement.scrollHeight;
+    if (tbody.parentElement && tbody.parentElement.parentElement) {
+      tbody.parentElement.parentElement.scrollTop =
+        tbody.parentElement.parentElement.scrollHeight;
+    }
   }
 
   handleGameOver(result) {
     document.getElementById("statStatus").textContent = `Game Over: ${result}`;
-    alert(`🏆 Game Over!\nResult: ${result}`);
+    setTimeout(() => {
+      alert(`🏆 Game Over!\nResult: ${result}`);
+    }, 100);
   }
 
   exportPGN() {
@@ -825,13 +859,6 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       "*"
     );
-    window.parent.postMessage(
-      {
-        isStreamlitMessage: true,
-        type: "streamlit:setFrameHeight",
-        height: Math.max(document.documentElement.scrollHeight, 900),
-      },
-      "*"
-    );
+    window.chessApp.notifyStreamlitHeight();
   }
 });
