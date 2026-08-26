@@ -13,14 +13,22 @@ import torch
 import chess
 import chess.pgn
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from src.model import ChessResNet
+from src.onnx_engine import ONNXChessModel
 from src.search import get_best_move as get_minimax_move
 from src.mcts import get_best_move_mcts
 from src.ui import BOLD, RESET, CYAN, GREEN, YELLOW, RED
 
 
 def run_benchmark_duel(
-    model_path: str,
+    model_path: str = "models/chess_resnet_int8.onnx",
     num_games: int = 10,
     depth: int = 3,
     save_dir: str = "pgn_exports"
@@ -31,10 +39,13 @@ def run_benchmark_duel(
     print(f"  Depth: {depth}")
     print(f"  Device: {device}\n")
 
-    model = ChessResNet(num_blocks=10, hidden_channels=128).to(device)
-    if os.path.exists(model_path):
-        model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
-    model.eval()
+    if model_path.endswith(".onnx") and os.path.exists(model_path):
+        model = ONNXChessModel(model_path, use_gpu=(device.type == "cuda"))
+    else:
+        model = ChessResNet(num_blocks=10, hidden_channels=128).to(device)
+        if os.path.exists(model_path):
+            model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+        model.eval()
 
     save_path = Path(save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
@@ -93,7 +104,7 @@ def run_benchmark_duel(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Chess AI self-play benchmark")
-    parser.add_argument("--model", type=str, default="models/chess_model_v3.pth", help="Model weights path")
+    parser.add_argument("--model", type=str, default="models/chess_resnet_int8.onnx", help="Model weights path")
     parser.add_argument("--games", type=int, default=5, help="Number of games to play")
     parser.add_argument("--depth", type=int, default=3, help="Search depth")
     args = parser.parse_args()

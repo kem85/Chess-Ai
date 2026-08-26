@@ -26,17 +26,18 @@ import chess
 import torch
 
 from src.model import ChessResNet
+from src.onnx_engine import ONNXChessModel
 from src.search import get_best_move as get_minimax_move, get_model_evaluation
 from src.mcts import get_best_move_mcts
 
 # Global state
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL = None
-MODEL_TYPE = "pytorch"
-MODEL_NAME = "chess_model_v3.pth"
 GAME_BOARD = chess.Board()
 SERVER_PORT = 8000
 SERVER_THREAD = None
+
+# Fallback in-memory cache for standalone HTTP server mode (dict survives for lifetime of process)
+_STANDALONE_MODEL_CACHE: dict = {}
 
 
 def ensure_model_file(target_path="models/chess_model_v3.pth") -> str:
@@ -60,45 +61,96 @@ def ensure_model_file(target_path="models/chess_model_v3.pth") -> str:
     return target_path
 
 
-def load_best_model():
-    """Loads the pre-trained PyTorch ResNet weights from models directory."""
-    global MODEL, MODEL_TYPE, MODEL_NAME
-    if MODEL is not None:
-        return
+def _load_model_impl(backend: str):
+    """
+    Internal loader — actually initialises and returns (model, type, name).
+    Called at most once per backend per process lifetime (cached by callers).
+    """
+    backend = (backend or "onnx").lower().strip()
 
+    if backend == "onnx":
+        onnx_candidates = [
+            "models/chess_resnet_int8.onnx",
+            "chess_resnet_int8.onnx",
+            "models/chess_resnet.onnx",
+            "chess_resnet.onnx",
+        ]
+        for onnx_path in onnx_candidates:
+            if os.path.exists(onnx_path) and os.path.getsize(onnx_path) > 100_000:
+                try:
+                    use_cuda = torch.cuda.is_available()
+                    name = os.path.basename(onnx_path)
+                    print(f"[*] Initializing ONNX Runtime Engine: {onnx_path} (GPU={use_cuda})...")
+                    m = ONNXChessModel(onnx_path, use_gpu=use_cuda)
+                    print(f"[✓] Successfully loaded ONNX engine from {onnx_path}")
+                    return (m, "onnx", name)
+                except Exception as err:
+                    print(f"[!] Error loading ONNX model {onnx_path}: {err}")
+
+    # PyTorch FP32 backend (.pth)
     ensure_model_file("models/chess_model_v3.pth")
-
-    candidates = [
+    pytorch_candidates = [
         "models/chess_model_v3.pth",
         "models/chess_model.pth",
         "chess_model_v3.pth",
         "chess_model.pth",
     ]
-
-    for path in candidates:
+    for path in pytorch_candidates:
         if os.path.exists(path) and os.path.getsize(path) > 1_000_000:
             try:
-                MODEL_NAME = os.path.basename(path)
-                MODEL_TYPE = "pytorch"
+                name = os.path.basename(path)
                 print(f"[*] Initializing PyTorch ResNet model: {path} on {DEVICE}...")
-                MODEL = ChessResNet(num_blocks=10, hidden_channels=128).to(DEVICE)
+                m = ChessResNet(num_blocks=10, hidden_channels=128).to(DEVICE)
                 state_dict = torch.load(path, map_location=DEVICE, weights_only=True)
-                MODEL.load_state_dict(state_dict)
-                MODEL.eval()
-                print(f"[✓] Successfully loaded weights from {path}")
-                return
+                m.load_state_dict(state_dict)
+                m.eval()
+                print(f"[✓] Successfully loaded PyTorch weights from {path}")
+                return (m, "pytorch", name)
             except Exception as err:
-                print(f"[!] Error loading {path}: {err}")
+                print(f"[!] Error loading PyTorch {path}: {err}")
 
-    # Fallback to randomly initialized ResNet if no valid weights found
-    print("[!] No valid checkpoint (>1MB) found. Initializing demonstration weights...")
-    MODEL = ChessResNet(num_blocks=10, hidden_channels=128).to(DEVICE)
-    MODEL.eval()
+    # Fallback to demo weights
+    print("[!] Checkpoint not found. Initializing demonstration weights...")
+    m = ChessResNet(num_blocks=10, hidden_channels=128).to(DEVICE)
+    m.eval()
+    return (m, "pytorch", "demo_weights")
 
 
-def get_position_evaluation(board: chess.Board) -> float:
+# ── Streamlit-cached loader (survives st.rerun() / script re-execution) ────────
+# We define the @st.cache_resource version only when Streamlit is actually
+# available, so standalone python app.py still works with the plain dict below.
+try:
+    import streamlit as _st_probe
+
+    @_st_probe.cache_resource(show_spinner=False)
+    def _st_cached_model(backend: str):
+        """Streamlit resource cache — loaded ONCE, shared across all reruns."""
+        return _load_model_impl(backend)
+
+    def get_model(backend: str = "onnx"):
+        """Returns (model, type, name) — cached via st.cache_resource in Streamlit mode."""
+        return _st_cached_model((backend or "onnx").lower().strip())
+
+except Exception:
+    # Standalone / non-Streamlit fallback: plain in-process dict cache
+    def get_model(backend: str = "onnx"):  # type: ignore[misc]
+        """Returns (model, type, name) — cached in-process dict for standalone HTTP mode."""
+        key = (backend or "onnx").lower().strip()
+        if key not in _STANDALONE_MODEL_CACHE:
+            _STANDALONE_MODEL_CACHE[key] = _load_model_impl(key)
+        return _STANDALONE_MODEL_CACHE[key]
+
+
+def load_best_model():
+    """Pre-warms the default ONNX model into memory."""
+    get_model("onnx")
+
+
+def get_position_evaluation(board: chess.Board, model=None) -> float:
     """Evaluates position and returns score from White's perspective."""
-    _, eval_score = get_model_evaluation(MODEL, board, DEVICE)
+    if model is None:
+        model, _, _ = get_model("onnx")
+    _, eval_score = get_model_evaluation(model, board, DEVICE)
     return float(eval_score)
 
 
@@ -139,10 +191,11 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
             self.serve_static_file("web/app.js", "application/javascript")
         elif path == "/api/status":
             self._set_json_headers()
+            active_m, active_type, active_name = get_model("onnx")
             data = {
                 "device": str(DEVICE),
-                "model": MODEL_NAME,
-                "modelType": MODEL_TYPE,
+                "model": active_name,
+                "modelType": active_type,
                 "fen": GAME_BOARD.fen()
             }
             self.wfile.write(json.dumps(data).encode("utf-8"))
@@ -214,6 +267,8 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
     def handle_apply_move(self, data):
         fen = data.get("fen", GAME_BOARD.fen())
         uci_str = data.get("uci", "")
+        model_backend = data.get("modelBackend", "onnx")
+        model, _, _ = get_model(model_backend)
         board = chess.Board(fen)
 
         try:
@@ -232,7 +287,7 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
         board.push(move)
         GAME_BOARD.set_fen(board.fen())
 
-        eval_score = get_position_evaluation(board)
+        eval_score = get_position_evaluation(board, model)
 
         resp = {
             "fen": board.fen(),
@@ -251,6 +306,7 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
     def handle_ai_move(self, data):
         fen = data.get("fen", GAME_BOARD.fen())
         engine_type = data.get("engine", "minimax")
+        model_backend = data.get("modelBackend", "onnx")
         depth = int(data.get("depth", 3))
         simulations = int(data.get("simulations", 200))
         board = chess.Board(fen)
@@ -260,11 +316,13 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": "Game is over"}).encode("utf-8"))
             return
 
+        model, model_type, model_name = get_model(model_backend)
+
         start_t = time.time()
         if engine_type == "mcts":
-            best_move = get_best_move_mcts(board, MODEL, DEVICE, num_simulations=simulations)
+            best_move = get_best_move_mcts(board, model, DEVICE, num_simulations=simulations)
         else:
-            best_move = get_minimax_move(board, depth, MODEL, DEVICE)
+            best_move = get_minimax_move(board, depth, model, DEVICE)
 
         calc_time_ms = (time.time() - start_t) * 1000.0
 
@@ -279,7 +337,7 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
         board.push(best_move)
         GAME_BOARD.set_fen(board.fen())
 
-        eval_score = get_position_evaluation(board)
+        eval_score = get_position_evaluation(board, model)
 
         resp = {
             "uci": uci_str,
@@ -290,7 +348,9 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
             "isGameOver": board.is_game_over(),
             "result": board.result() if board.is_game_over() else None,
             "eval": eval_score,
-            "calcTimeMs": round(calc_time_ms, 1)
+            "calcTimeMs": round(calc_time_ms, 1),
+            "model": model_name,
+            "modelType": model_type
         }
 
         self._set_json_headers()
@@ -298,18 +358,22 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
 
     def handle_eval(self, data):
         fen = data.get("fen", GAME_BOARD.fen())
+        model_backend = data.get("modelBackend", "onnx")
+        model, _, _ = get_model(model_backend)
         board = chess.Board(fen)
-        eval_score = get_position_evaluation(board)
+        eval_score = get_position_evaluation(board, model)
         self._set_json_headers()
         self.wfile.write(json.dumps({"eval": eval_score}).encode("utf-8"))
 
     def handle_undo(self, data):
         count = int(data.get("count", 1))
+        model_backend = data.get("modelBackend", "onnx")
+        model, _, _ = get_model(model_backend)
         for _ in range(count):
             if len(GAME_BOARD.move_stack) > 0:
                 GAME_BOARD.pop()
 
-        eval_score = get_position_evaluation(GAME_BOARD)
+        eval_score = get_position_evaluation(GAME_BOARD, model)
         self._set_json_headers()
         self.wfile.write(json.dumps({
             "fen": GAME_BOARD.fen(),
@@ -406,11 +470,12 @@ if is_st_active:
     if "last_action_id" not in st.session_state:
         st.session_state["last_action_id"] = None
 
+    active_m, active_type, active_name = get_model("onnx")
     component_value = chess_arena_component(
         ai_result=st.session_state["ai_result"],
         device=str(DEVICE),
-        model=MODEL_NAME,
-        model_type=MODEL_TYPE,
+        model=active_name,
+        model_type=active_type,
         default=None,
         key="chess_arena_comp"
     )
@@ -422,16 +487,18 @@ if is_st_active:
             st.session_state["last_action_id"] = action_id
             fen = component_value.get("fen", GAME_BOARD.fen())
             engine_type = component_value.get("engine", "minimax")
+            model_backend = component_value.get("modelBackend", "onnx")
             depth = int(component_value.get("depth", 3))
             simulations = int(component_value.get("simulations", 200))
 
             board = chess.Board(fen)
             if not board.is_game_over():
+                model, model_type, model_name = get_model(model_backend)
                 start_t = time.time()
                 if engine_type == "mcts":
-                    best_move = get_best_move_mcts(board, MODEL, DEVICE, num_simulations=simulations)
+                    best_move = get_best_move_mcts(board, model, DEVICE, num_simulations=simulations)
                 else:
-                    best_move = get_minimax_move(board, depth, MODEL, DEVICE)
+                    best_move = get_minimax_move(board, depth, model, DEVICE)
                 calc_time_ms = (time.time() - start_t) * 1000.0
 
                 if best_move is not None:
@@ -439,7 +506,7 @@ if is_st_active:
                     san_str = board.san(best_move)
                     uci_str = best_move.uci()
                     board.push(best_move)
-                    eval_score = get_position_evaluation(board)
+                    eval_score = get_position_evaluation(board, model)
 
                     st.session_state["ai_result"] = {
                         "actionId": action_id,
@@ -451,7 +518,9 @@ if is_st_active:
                         "isGameOver": board.is_game_over(),
                         "result": board.result() if board.is_game_over() else None,
                         "eval": eval_score,
-                        "calcTimeMs": round(calc_time_ms, 1)
+                        "calcTimeMs": round(calc_time_ms, 1),
+                        "model": model_name,
+                        "modelType": model_type
                     }
                     st.rerun()
 
@@ -464,10 +533,12 @@ elif __name__ == "__main__":
     httpd = HTTPServer(server_address, ChessAPIHandler)
     url = f"http://127.0.0.1:{port}"
 
+    active_m, active_type, active_name = get_model("onnx")
     print(f"\n==============================================================")
     print(f"⚡ Chess-AI Web Arena running on: {url}")
     print(f"🧠 Engine Device: {DEVICE}")
-    print(f"📦 Active Model:  {MODEL_NAME} ({MODEL_TYPE.upper()})")
+    print(f"📦 Default Model: {active_name} ({active_type.upper()})")
+    print(f"🎯 Available:     ONNX INT8 (Fast) | PyTorch FP32 (High Precision)")
     print(f"==============================================================\n")
 
     threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <title>♟️ Chess-AI: Deep Residual Neural Network Arena</title>
+    <title>♟️ Chess-AI: ONNX INT8 Neural Engine & Web Arena</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,7 +20,7 @@
           <div class="logo-icon">♟️</div>
           <div>
             <h1 class="logo-title">Chess-AI</h1>
-            <p class="logo-subtitle">Dual-Head ResNet & MCTS Neural Arena</p>
+            <p class="logo-subtitle">Dual-Head ResNet & MCTS Arena (ONNX INT8)</p>
           </div>
         </div>
         <div class="header-badges">
@@ -32,7 +32,7 @@
             🔊 Sound
           </button>
           <span class="badge badge-gpu" id="deviceBadge">CUDA: Active</span>
-          <span class="badge badge-model" id="modelBadge">ChessResNet v3</span>
+          <span class="badge badge-model" id="modelBadge">ONNX INT8: Active</span>
           <a
             href="https://github.com/kem85/Chess-Ai"
             target="_blank"
@@ -70,7 +70,7 @@
               <div class="player-name" id="topPlayerName">
                 AI Engine (Black)
               </div>
-              <div class="player-meta" id="topPlayerMeta">ResNet • Depth 3</div>
+              <div class="player-meta" id="topPlayerMeta">ONNX INT8 • Depth 3</div>
             </div>
             <div class="captured-box" id="topCapturedBox"></div>
             <div class="player-clock" id="topPlayerStatus">Waiting</div>
@@ -109,6 +109,21 @@
           <!-- Engine Configuration Card -->
           <div class="glass-card">
             <h2 class="card-title">⚙️ Engine Configuration</h2>
+
+            <div class="form-group">
+              <label for="modelSelect">Neural Model & Precision</label>
+              <select id="modelSelect" class="form-control">
+                <option value="onnx" selected>
+                  ⚡ ONNX INT8 (Quantized • 26.7 MB • Ultra-Fast)
+                </option>
+                <option value="pytorch">
+                  🎯 PyTorch FP32 (.pth • 106.6 MB • Higher Accuracy, Slower)
+                </option>
+              </select>
+              <small class="form-hint" id="modelDesc">
+                ⚡ <strong>ONNX INT8</strong>: 8-bit quantized weights. 75% smaller footprint, 2–3× faster inference speed.
+              </small>
+            </div>
 
             <div class="form-group">
               <label for="engineSelect">Search Algorithm</label>

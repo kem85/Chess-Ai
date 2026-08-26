@@ -11,6 +11,7 @@ import torch
 import chess
 
 from src.model import ChessResNet
+from src.onnx_engine import ONNXChessModel
 from src.search import get_best_move as get_best_move_minimax, get_model_evaluation
 from src.mcts import get_best_move_mcts
 from src.ui import render_board, BOLD, RESET, CYAN, YELLOW, GREEN, RED, DIM
@@ -23,29 +24,52 @@ if sys.platform == "win32":
         pass
 
 
-def resolve_default_model() -> str:
-    """Finds the best available pre-trained checkpoint in the workspace."""
+def resolve_default_model(model_arg: str = None) -> str:
+    """Finds the best available pre-trained checkpoint or resolves aliases ('onnx'/'pytorch')."""
+    if model_arg:
+        if model_arg.lower() in ("onnx", "int8"):
+            for p in ["models/chess_resnet_int8.onnx", "chess_resnet_int8.onnx"]:
+                if os.path.exists(p): return p
+        elif model_arg.lower() in ("pytorch", "pth", "fp32"):
+            for p in ["models/chess_model_v3.pth", "models/chess_model.pth", "chess_model_v3.pth"]:
+                if os.path.exists(p): return p
+        return model_arg
+
     candidates = [
+        "models/chess_resnet_int8.onnx",
+        "chess_resnet_int8.onnx",
+        "models/chess_resnet.onnx",
+        "chess_resnet.onnx",
         "models/chess_model_v3.pth",
         "models/chess_model.pth",
         "chess_model_v3.pth",
         "chess_model.pth"
     ]
     for c in candidates:
-        if os.path.exists(c) and os.path.getsize(c) > 1_000_000:
+        if os.path.exists(c) and os.path.getsize(c) > 100_000:
             return c
-    return "models/chess_model_v3.pth"
+    return "models/chess_resnet_int8.onnx"
 
 
-def load_model(model_path: str, device: torch.device) -> Tuple[torch.nn.Module, str]:
-    """Loads PyTorch ResNet model from checkpoint."""
+def load_model(model_path: str, device: torch.device) -> Tuple[object, str]:
+    """Loads ONNX Runtime model or PyTorch ResNet model from checkpoint with telemetry."""
+    model_path = resolve_default_model(model_path)
+    if model_path.endswith(".onnx") and os.path.exists(model_path):
+        use_gpu = (device.type == "cuda")
+        print(f"[*] Loading ONNX Runtime Engine from: {model_path} (GPU={use_gpu})")
+        print(f"    ⚡ ONNX INT8: 8-bit quantized weights, 75% smaller footprint, fast CPU inference.")
+        model = ONNXChessModel(model_path, use_gpu=use_gpu)
+        print(f"[✓] ONNX engine loaded successfully.")
+        return model, "onnx"
+
     model = ChessResNet(num_blocks=10, hidden_channels=128).to(device)
     if os.path.exists(model_path) and os.path.getsize(model_path) > 1_000_000:
         try:
-            print(f"[*] Loading PyTorch weights from: {model_path}")
+            print(f"[*] Loading PyTorch Full Precision (FP32) weights from: {model_path}")
+            print(f"    🎯 PyTorch FP32: Full 32-bit floating-point weights (highest raw precision, slower CPU inference).")
             state_dict = torch.load(model_path, map_location=device, weights_only=True)
             model.load_state_dict(state_dict)
-            print(f"[✓] Model loaded successfully.")
+            print(f"[✓] PyTorch model loaded successfully.")
         except Exception as err:
             print(f"[!] Failed to load {model_path}: {err}")
     else:
@@ -189,8 +213,8 @@ def play_game(
 
 if __name__ == "__main__":
     default_model = resolve_default_model()
-    parser = argparse.ArgumentParser(description="Play against the Dual-Head Chess AI")
-    parser.add_argument("--model", type=str, default=default_model, help="Path to .pth or .onnx model weights")
+    parser = argparse.ArgumentParser(description="Play against the Dual-Head Chess AI (ONNX INT8 or PyTorch FP32)")
+    parser.add_argument("--model", type=str, default=default_model, help="Model weights path or alias: 'onnx' (fast INT8, 26MB) or 'pytorch' (high precision FP32 .pth, slower)")
     parser.add_argument("--engine", type=str, default="minimax", choices=["minimax", "mcts"], help="Search algorithm (minimax / mcts)")
     parser.add_argument("--depth", type=int, default=3, help="Minimax search depth (default: 3)")
     parser.add_argument("--simulations", type=int, default=200, help="MCTS simulation count (default: 200)")

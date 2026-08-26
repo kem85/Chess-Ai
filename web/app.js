@@ -134,6 +134,7 @@ class ChessApp {
     this.legalMoves = [];
     this.lastMove = null;
     this.isThinking = false;
+    this.selectedModelBackend = "onnx";
 
     this.moveHistory = [];
     this.pendingPromotion = null;
@@ -147,19 +148,31 @@ class ChessApp {
   }
 
   initUI() {
+    // Model backend config
+    const modelSelect = document.getElementById("modelSelect");
+    if (modelSelect) {
+      modelSelect.addEventListener("change", (e) => {
+        this.selectedModelBackend = e.target.value;
+        this.updateModelSelectionUI();
+      });
+    }
+
     // Engine config
     document.getElementById("engineSelect").addEventListener("change", (e) => {
       const isMcts = e.target.value === "mcts";
       document.getElementById("depthGroup").classList.toggle("hidden", isMcts);
       document.getElementById("simsGroup").classList.toggle("hidden", !isMcts);
+      this.updateModelSelectionUI();
     });
 
     document.getElementById("depthSlider").addEventListener("input", (e) => {
       document.getElementById("depthVal").textContent = e.target.value;
+      this.updateModelSelectionUI();
     });
 
     document.getElementById("simsSlider").addEventListener("input", (e) => {
       document.getElementById("simsVal").textContent = e.target.value;
+      this.updateModelSelectionUI();
     });
 
     // Player mode buttons
@@ -193,6 +206,45 @@ class ChessApp {
     document
       .getElementById("btnExportPGN")
       .addEventListener("click", () => this.exportPGN());
+
+    this.updateModelSelectionUI();
+  }
+
+  updateModelSelectionUI() {
+    const isPyTorch = this.selectedModelBackend === "pytorch";
+    const descEl = document.getElementById("modelDesc");
+    const badgeEl = document.getElementById("modelBadge");
+    const metaEl = document.getElementById("topPlayerMeta");
+    const depthEl = document.getElementById("depthVal");
+    const depth = depthEl ? depthEl.textContent : "3";
+    const engineSel = document.getElementById("engineSelect");
+    const isMcts = engineSel ? engineSel.value === "mcts" : false;
+    const simsEl = document.getElementById("simsVal");
+    const sims = simsEl ? simsEl.textContent : "200";
+
+    if (descEl) {
+      if (isPyTorch) {
+        descEl.innerHTML =
+          "🎯 <strong>PyTorch FP32 (.pth)</strong>: Full 32-bit floating-point weights without quantization. Higher raw precision, but slower CPU inference.";
+        descEl.style.borderLeftColor = "#f59e0b";
+      } else {
+        descEl.innerHTML =
+          "⚡ <strong>ONNX INT8</strong>: 8-bit quantized weights. 75% smaller footprint, 2–3× faster inference speed.";
+        descEl.style.borderLeftColor = "var(--accent-cyan)";
+      }
+    }
+
+    if (badgeEl) {
+      badgeEl.textContent = isPyTorch ? "PyTorch FP32: Active" : "ONNX INT8: Active";
+      badgeEl.classList.toggle("badge-pytorch", isPyTorch);
+    }
+
+    if (metaEl) {
+      const engineTag = isPyTorch ? "PyTorch FP32" : "ONNX INT8";
+      metaEl.textContent = isMcts
+        ? `${engineTag} • MCTS (${sims})`
+        : `${engineTag} • Depth ${depth}`;
+    }
   }
 
   getApiEndpoint(path) {
@@ -214,12 +266,10 @@ class ChessApp {
         document.getElementById("deviceBadge").textContent =
           `${data.device.toUpperCase()}: Active`;
       }
-      if (data.model) {
-        document.getElementById("modelBadge").textContent = data.model;
-      }
+      this.updateModelSelectionUI();
     } catch (err) {
       document.getElementById("deviceBadge").textContent = "CUDA/CPU: Active";
-      document.getElementById("modelBadge").textContent = "ChessResNet v3";
+      this.updateModelSelectionUI();
     }
   }
 
@@ -267,6 +317,8 @@ class ChessApp {
     this.updateEvalBar(0.0);
     const statusEl = document.getElementById("statStatus");
     if (statusEl) statusEl.textContent = "Live Match";
+    const statTimeEl = document.getElementById("statTime");
+    if (statTimeEl) statTimeEl.textContent = "0.00s";
     this.renderBoard();
 
     // If human is Black or self-play, trigger AI's first move
@@ -449,7 +501,7 @@ class ChessApp {
 
   async fetchLegalMoves(sq) {
     try {
-      const res = await fetch("/api/legal_moves", {
+      const res = await fetch(this.getApiEndpoint("/api/legal_moves"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fen: this.currentFen, square: sq }),
@@ -536,10 +588,14 @@ class ChessApp {
   async serverExecuteMove(fromSq, toSq, promo = null) {
     const moveUci = `${fromSq}${toSq}${promo || ""}`;
     try {
-      const res = await fetch("/api/apply_move", {
+      const res = await fetch(this.getApiEndpoint("/api/apply_move"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fen: this.currentFen, uci: moveUci }),
+        body: JSON.stringify({
+          fen: this.currentFen,
+          uci: moveUci,
+          modelBackend: this.selectedModelBackend || "onnx",
+        }),
       });
       const data = await res.json();
       if (data.error) return;
@@ -587,7 +643,10 @@ class ChessApp {
           }
           if (args.model) {
             const modEl = document.getElementById("modelBadge");
-            if (modEl) modEl.textContent = args.model;
+            if (modEl) {
+              const isONNX = args.model_type === "onnx" || (typeof args.model === "string" && args.model.toLowerCase().includes("onnx"));
+              modEl.textContent = isONNX ? "ONNX INT8: Active" : args.model;
+            }
           }
           if (
             args.ai_result &&
@@ -656,10 +715,12 @@ class ChessApp {
     if (data.isCapture) soundFx.playCapture();
     else soundFx.playMove();
 
-    if (data.isCheck) soundFx.playCheck();
-
-    const calcTime = data.calcTimeMs ? `${data.calcTimeMs}ms` : "0ms";
-    document.getElementById("statTime").textContent = calcTime;
+    let calcTime = "0.00s";
+    if (typeof data.calcTimeMs === "number") {
+      calcTime = `${(data.calcTimeMs / 1000).toFixed(2)}s`;
+    }
+    const statTimeEl = document.getElementById("statTime");
+    if (statTimeEl) statTimeEl.textContent = calcTime;
     const evalVal = typeof data.eval === "number" ? data.eval : 0.0;
     document.getElementById("statEval").textContent =
       `${evalVal > 0 ? "+" : ""}${evalVal.toFixed(2)}`;
@@ -682,6 +743,8 @@ class ChessApp {
     const engineType = document.getElementById("engineSelect").value;
     const depth = parseInt(document.getElementById("depthSlider").value);
     const sims = parseInt(document.getElementById("simsSlider").value);
+    const modelSelect = document.getElementById("modelSelect");
+    const modelBackend = modelSelect ? modelSelect.value : (this.selectedModelBackend || "onnx");
     const actionId = `move_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     this.currentActionId = actionId;
 
@@ -698,6 +761,7 @@ class ChessApp {
               actionId: actionId,
               fen: this.currentFen,
               engine: engineType,
+              modelBackend: modelBackend,
               depth: depth,
               simulations: sims,
             },
@@ -716,6 +780,7 @@ class ChessApp {
           body: JSON.stringify({
             fen: this.currentFen,
             engine: engineType,
+            modelBackend: modelBackend,
             depth: depth,
             simulations: sims,
           }),

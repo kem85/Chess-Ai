@@ -169,6 +169,12 @@ body {
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
+.badge-model.badge-pytorch {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
 .badge-sound {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
@@ -685,6 +691,23 @@ body {
   display: none !important;
 }
 
+.form-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-xs);
+  border-left: 2px solid var(--accent-cyan);
+  transition: all 0.2s ease;
+}
+
+.form-hint strong {
+  color: var(--text-primary);
+}
+
 /* Buttons */
 .btn {
   font-family: inherit;
@@ -781,6 +804,7 @@ body {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .status-active {
