@@ -102,11 +102,22 @@ def run_benchmark_duel(
     print(f"  Full PGN saved to: {out_file}\n")
 
 
-if __name__ == "__main__":
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def main():
+    """Main CLI entrypoint for running automated benchmark duels."""
+    default_model = os.path.join(BASE_DIR, "models", "chess_resnet_int8.onnx")
+    if not os.path.exists(default_model):
+        default_model = "models/chess_resnet_int8.onnx"
     parser = argparse.ArgumentParser(description="Run Chess AI self-play benchmark")
-    parser.add_argument("--model", type=str, default="models/chess_resnet_int8.onnx", help="Model weights path")
+    parser.add_argument("--model", type=str, default=default_model, help="Model weights path")
     parser.add_argument("--games", type=int, default=5, help="Number of games to play")
     parser.add_argument("--depth", type=int, default=3, help="Search depth")
     args = parser.parse_args()
 
     run_benchmark_duel(model_path=args.model, num_games=args.games, depth=args.depth)
+
+
+if __name__ == "__main__":
+    main()

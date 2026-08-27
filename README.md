@@ -4,14 +4,16 @@
 
 ### *Powered by ONNX Runtime INT8 Quantization & AlphaZero Architecture* 🔥
 
-**Chess-AI** brings the power of **AlphaZero** straight to your desktop and browser with an interactive **Web Arena**! Powered by high-performance **ONNX Runtime INT8 quantization** (with PyTorch fallback), it features an interactive **Web GUI**, a **CLI terminal interface**, dual policy-guided search algorithms, and automated match gauntlets.
+**Chess-AI** brings the power of **AlphaZero** straight to your desktop and browser with an interactive **Web Arena**! Powered by high-performance **ONNX Runtime INT8 quantization** (with PyTorch fallback), it features an interactive **Web GUI**, **1-Click Desktop Launchers**, a **CLI terminal interface**, dual policy-guided search algorithms, and automated match gauntlets.
 
 <br/>
 
 [![Try Live Demo](https://img.shields.io/badge/🎮%20Try%20Live%20Demo-chess--ai--ml.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://chess-ai-ml.streamlit.app)
+[![Download Release ZIP](https://img.shields.io/badge/📦%20Download-Release%20Package%20(ZIP)-22c55e?style=for-the-badge&logo=github)](https://github.com/kem85/Chess-Ai/releases/latest)
 
 <br/>
 
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg?style=flat-square&logo=github)](https://github.com/kem85/Chess-Ai/releases)
 [![CI](https://img.shields.io/badge/CI-Passing-2ea44f.svg?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/kem85/Chess-Ai/actions)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![ONNX Runtime](https://img.shields.io/badge/Engine-ONNX%20INT8%20(26.7MB)-005CED.svg?style=flat-square&logo=onnx&logoColor=white)](https://onnxruntime.ai/)
@@ -30,32 +32,46 @@ Experience the neural engine right now directly in your web browser:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start & Release Packages
 
-### 1. Installation
+### 📥 1. Download Release Packages
+
+| Package | Edition | Size | Description & Launch |
+| :--- | :---: | :---: | :--- |
+| **[`Chess-AI-v1.0.0.zip`](https://github.com/kem85/Chess-Ai/releases/latest)** | **Complete All-in-One** | **~100 MB** | Full offline bundle with ONNX INT8 + PyTorch FP32 weights, Web Arena, tests, and launchers. |
+| **[`Chess-AI-v1.0.0-ONNX-Lite.zip`](https://github.com/kem85/Chess-Ai/releases/latest)** | **ONNX-Lite** | **~7.4 MB** | Fast lightweight download with ONNX INT8 quantized engine & Web Arena. |
+
+### 🖱️ 2. One-Click Desktop Launch
+
+1. Download and extract **`Chess-AI-v1.0.0.zip`**.
+2. Run the launcher for your OS:
+   - 🪟 **Windows**: Double-click **`start_web_arena.bat`**
+   - 🐧 **Linux / macOS**: Run `./start_web_arena.sh` (or `bash start_web_arena.sh`)
+3. The Web Arena will immediately launch and open in your default browser at **`http://127.0.0.1:8000`**!
+
+---
+
+### 🐍 3. Python & Pip Installation
 
 ```bash
-# 1. Clone the repository to your local machine
+# Clone the repository
 git clone https://github.com/kem85/Chess-Ai.git
 cd Chess-Ai
 
-# 2. Install all required dependencies (ONNX Runtime, PyTorch, python-chess, Streamlit)
-pip install -r requirements.txt
+# Install as a package
+pip install -e .
+
+# Launch anywhere via CLI commands
+chess-web       # Opens the Web Arena in your browser
+chess-cli       # Play against the AI in terminal
+chess-benchmark # Run self-play gauntlet
 ```
-
-### 2. Launch the Web Arena
-
-You can run the web application in **Standalone Python** mode or via **Streamlit**:
 
 ```bash
-# Option A: Run the Standalone Web Arena (Recommended)
-python app.py
-
-# Option B: Run via Streamlit Engine
-streamlit run app.py
+# Alternatively run directly with Python:
+python app.py       # Standalone Web Arena (http://127.0.0.1:8000)
+streamlit run app.py # Streamlit Arena (http://localhost:8501)
 ```
-
-> 🎯 **Browser Access**: Automatically opens at **`http://127.0.0.1:8000`** (or `http://localhost:8501` under Streamlit). Features responsive mobile/tablet layout, touch controls, legal move highlights, and real-time evaluation!
 
 ---
 
@@ -192,6 +208,22 @@ Run unit tests across tensor encodings, neural network forward passes, and searc
 # Execute unit tests for tensor encodings, ResNet forward passes, and search algorithms
 pytest
 ```
+
+---
+
+## 📦 Packaging & Building Releases
+
+Generate clean release zip bundles, wheels, and checksums locally:
+
+```bash
+# Package the Complete Edition & Lite Edition release ZIP archives
+python scripts/package_release.py
+
+# Build standard Python wheel (.whl) and source distribution (.tar.gz)
+python -m build
+```
+
+The output packages and SHA-256 checksums will be generated in `dist/` and the project root.
 
 ---
 

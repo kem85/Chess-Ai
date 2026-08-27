@@ -1,0 +1,4 @@
+16f94b90660ca0260ae914e79242bccebc8692d18944875f26427fcba52673cc  Chess-AI-v1.0.0-ONNX-Lite.zip
+779240817bafe30d1c96c38b10e22e52c4d88bcf6dd6ff887a5e9344d0180c89  Chess-AI-v1.0.0.zip
+3d33040b1afa18152060b9b7be2d9128e6f17fa1019af7632ef97f15cddb8ca2  chess_ai_arena-1.0.0-py3-none-any.whl
+b6e50f8693a3f91060433c7c5cff8964ede2c070614c8793de7ff7c9ab1ff65a  chess_ai_arena-1.0.0.tar.gz

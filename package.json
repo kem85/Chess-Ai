@@ -1,0 +1,29 @@
+{
+  "name": "chess-ai-web-arena",
+  "version": "1.0.0",
+  "description": "High-Performance ONNX INT8 Neural Chess Arena & Interactive Web UI",
+  "main": "web/index.html",
+  "scripts": {
+    "start": "python app.py",
+    "web": "python app.py",
+    "cli": "python play.py",
+    "benchmark": "python benchmark.py",
+    "test": "pytest",
+    "package": "python scripts/package_release.py"
+  },
+  "keywords": [
+    "chess",
+    "chess-ai",
+    "neural-network",
+    "alphazero",
+    "onnx",
+    "web-arena",
+    "mcts"
+  ],
+  "author": "kem85",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kem85/Chess-Ai.git"
+  }
+}

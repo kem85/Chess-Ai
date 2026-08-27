@@ -1,0 +1,12 @@
+include README.md
+include LICENSE
+include RELEASE_NOTES.md
+include requirements.txt
+include start_web_arena.bat
+include start_web_arena.sh
+include package.json
+recursive-include web *
+recursive-include models *.onnx
+recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[cod]

@@ -36,29 +36,36 @@ GAME_BOARD = chess.Board()
 SERVER_PORT = 8000
 SERVER_THREAD = None
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = os.path.join(BASE_DIR, "web")
+
 # Fallback in-memory cache for standalone HTTP server mode (dict survives for lifetime of process)
 _STANDALONE_MODEL_CACHE: dict = {}
 
 
 def ensure_model_file(target_path="models/chess_model_v3.pth") -> str:
     """Ensures full PyTorch weights are present, auto-downloading from GitHub LFS if needed."""
+    resolved_target = target_path if os.path.isabs(target_path) else os.path.join(BASE_DIR, target_path)
+    if os.path.exists(resolved_target) and os.path.getsize(resolved_target) > 1_000_000:
+        return resolved_target
     if os.path.exists(target_path) and os.path.getsize(target_path) > 1_000_000:
         return target_path
 
     url = "https://media.githubusercontent.com/media/kem85/Chess-Ai/main/models/chess_model_v3.pth"
     print(f"[*] Fetching full PyTorch ResNet weights from GitHub LFS ({url})...")
-    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    os.makedirs(os.path.dirname(resolved_target), exist_ok=True)
     try:
         import urllib.request
         opener = urllib.request.build_opener()
         opener.addheaders = [("User-Agent", "Mozilla/5.0")]
         urllib.request.install_opener(opener)
-        urllib.request.urlretrieve(url, target_path)
-        if os.path.exists(target_path) and os.path.getsize(target_path) > 1_000_000:
-            print(f"[✓] Full weights downloaded successfully ({os.path.getsize(target_path)} bytes).")
+        urllib.request.urlretrieve(url, resolved_target)
+        if os.path.exists(resolved_target) and os.path.getsize(resolved_target) > 1_000_000:
+            print(f"[✓] Full weights downloaded successfully ({os.path.getsize(resolved_target)} bytes).")
+            return resolved_target
     except Exception as err:
         print(f"[!] Could not download checkpoint: {err}")
-    return target_path
+    return resolved_target
 
 
 def _load_model_impl(backend: str):
@@ -70,8 +77,10 @@ def _load_model_impl(backend: str):
 
     if backend == "onnx":
         onnx_candidates = [
+            os.path.join(BASE_DIR, "models", "chess_resnet_int8.onnx"),
             "models/chess_resnet_int8.onnx",
             "chess_resnet_int8.onnx",
+            os.path.join(BASE_DIR, "models", "chess_resnet.onnx"),
             "models/chess_resnet.onnx",
             "chess_resnet.onnx",
         ]
@@ -90,8 +99,10 @@ def _load_model_impl(backend: str):
     # PyTorch FP32 backend (.pth)
     ensure_model_file("models/chess_model_v3.pth")
     pytorch_candidates = [
+        os.path.join(BASE_DIR, "models", "chess_model_v3.pth"),
         "models/chess_model_v3.pth",
         "models/chess_model.pth",
+        os.path.join(BASE_DIR, "models", "chess_model.pth"),
         "chess_model_v3.pth",
         "chess_model.pth",
     ]
@@ -182,13 +193,13 @@ class ChessAPIHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         if path in ["/", "/index.html"]:
-            self.serve_static_file("web/index.html", "text/html")
+            self.serve_static_file(os.path.join(WEB_DIR, "index.html"), "text/html")
         elif path in ["/static/style.css", "/style.css"]:
-            self.serve_static_file("web/style.css", "text/css")
+            self.serve_static_file(os.path.join(WEB_DIR, "style.css"), "text/css")
         elif path in ["/static/chess.min.js", "/chess.min.js"]:
-            self.serve_static_file("web/chess.min.js", "application/javascript")
+            self.serve_static_file(os.path.join(WEB_DIR, "chess.min.js"), "application/javascript")
         elif path in ["/static/app.js", "/app.js"]:
-            self.serve_static_file("web/app.js", "application/javascript")
+            self.serve_static_file(os.path.join(WEB_DIR, "app.js"), "application/javascript")
         elif path == "/api/status":
             self._set_json_headers()
             active_m, active_type, active_name = get_model("onnx")
@@ -525,8 +536,8 @@ if is_st_active:
                     st.rerun()
 
 
-elif __name__ == "__main__":
-    # --- STANDALONE PYTHON MODE ---
+def main(open_browser: bool = True):
+    """Main CLI entrypoint for launching the standalone Chess-AI Web Arena."""
     load_best_model()
     port = find_available_port(8000)
     server_address = ("", port)
@@ -541,9 +552,14 @@ elif __name__ == "__main__":
     print(f"🎯 Available:     ONNX INT8 (Fast) | PyTorch FP32 (High Precision)")
     print(f"==============================================================\n")
 
-    threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()
+    if open_browser:
+        threading.Thread(target=lambda: (time.sleep(1), webbrowser.open(url)), daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down Chess-AI Server...")
         httpd.server_close()
+
+
+if not is_st_active and __name__ == "__main__":
+    main()

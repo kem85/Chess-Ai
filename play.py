@@ -24,22 +24,33 @@ if sys.platform == "win32":
         pass
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 def resolve_default_model(model_arg: str = None) -> str:
     """Finds the best available pre-trained checkpoint or resolves aliases ('onnx'/'pytorch')."""
     if model_arg:
         if model_arg.lower() in ("onnx", "int8"):
-            for p in ["models/chess_resnet_int8.onnx", "chess_resnet_int8.onnx"]:
+            for p in [os.path.join(BASE_DIR, "models", "chess_resnet_int8.onnx"), "models/chess_resnet_int8.onnx", "chess_resnet_int8.onnx"]:
                 if os.path.exists(p): return p
         elif model_arg.lower() in ("pytorch", "pth", "fp32"):
-            for p in ["models/chess_model_v3.pth", "models/chess_model.pth", "chess_model_v3.pth"]:
+            for p in [os.path.join(BASE_DIR, "models", "chess_model_v3.pth"), "models/chess_model_v3.pth", "models/chess_model.pth", "chess_model_v3.pth"]:
                 if os.path.exists(p): return p
+        if os.path.exists(model_arg):
+            return model_arg
+        resolved_arg = os.path.join(BASE_DIR, model_arg)
+        if os.path.exists(resolved_arg):
+            return resolved_arg
         return model_arg
 
     candidates = [
+        os.path.join(BASE_DIR, "models", "chess_resnet_int8.onnx"),
         "models/chess_resnet_int8.onnx",
         "chess_resnet_int8.onnx",
+        os.path.join(BASE_DIR, "models", "chess_resnet.onnx"),
         "models/chess_resnet.onnx",
         "chess_resnet.onnx",
+        os.path.join(BASE_DIR, "models", "chess_model_v3.pth"),
         "models/chess_model_v3.pth",
         "models/chess_model.pth",
         "chess_model_v3.pth",
@@ -48,7 +59,7 @@ def resolve_default_model(model_arg: str = None) -> str:
     for c in candidates:
         if os.path.exists(c) and os.path.getsize(c) > 100_000:
             return c
-    return "models/chess_resnet_int8.onnx"
+    return os.path.join(BASE_DIR, "models", "chess_resnet_int8.onnx")
 
 
 def load_model(model_path: str, device: torch.device) -> Tuple[object, str]:
@@ -211,7 +222,8 @@ def play_game(
     print(f"{CYAN}=============================================================={RESET}\n")
 
 
-if __name__ == "__main__":
+def main():
+    """Main CLI entrypoint for interactive terminal play against Chess-AI."""
     default_model = resolve_default_model()
     parser = argparse.ArgumentParser(description="Play against the Dual-Head Chess AI (ONNX INT8 or PyTorch FP32)")
     parser.add_argument("--model", type=str, default=default_model, help="Model weights path or alias: 'onnx' (fast INT8, 26MB) or 'pytorch' (high precision FP32 .pth, slower)")
@@ -228,3 +240,7 @@ if __name__ == "__main__":
         simulations=args.simulations,
         play_as=args.color
     )
+
+
+if __name__ == "__main__":
+    main()
